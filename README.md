@@ -1,8 +1,8 @@
-#ExpenSEEs-API
+# ExpenSEEs-API
 
-###Installation
+### Installation
 
-###Requirements
+### Requirements
 -PostgreSQL
 -POSTMAN
 IntellijIDEA
