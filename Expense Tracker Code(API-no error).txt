@@ -1,0 +1,769 @@
+Expense Tracker Code: 
+
+package controller
+- ExpenseController: 
+package com.example.expensetracker.controller;
+
+
+import com.example.expensetracker.dto.ExpenseDTO;
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.services.expense.ExpenseService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/expenses")
+@RequiredArgsConstructor
+@CrossOrigin
+public class ExpenseController {
+
+    private final ExpenseService expenseService;
+
+    @PostMapping
+    public ResponseEntity<?> postExpense(@RequestBody ExpenseDTO dto) {
+        Expense createdExpense = expenseService.postExpense(dto);
+        if (createdExpense != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdExpense);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllExpenses() {
+        return ResponseEntity.ok(expenseService.getAllExpenses());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getExpenseById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(expenseService.getExpenseById(id));
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateExpense(@PathVariable Long id, @RequestBody ExpenseDTO dto) {
+        try {
+            return ResponseEntity.ok(expenseService.updateExpense(id, dto));
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+
+    }
+
+@DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteExpense(@PathVariable Long id) {
+        try {
+            expenseService.deleteExpense(id);
+            return ResponseEntity.ok(null);
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+}
+
+IncomeController :
+package com.example.expensetracker.controller;
+
+import com.example.expensetracker.dto.IncomeDTO;
+import com.example.expensetracker.entity.Income;
+import com.example.expensetracker.services.income.IncomeService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/incomes")
+@RequiredArgsConstructor
+@CrossOrigin("*")
+public class IncomeController {
+    private final IncomeService incomeService;
+
+    @PostMapping
+    public ResponseEntity<?> postIncome(@RequestBody IncomeDTO dto) {
+        Income createdIncome = incomeService.postIncome(dto);
+        if (createdIncome != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdIncome);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllIncomes() {
+        return ResponseEntity.ok(incomeService.getAllIncomes());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getIncomeById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(incomeService.getIncomeById(id));
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateIncome(@PathVariable Long id, @RequestBody IncomeDTO dto) {
+        try {
+            return ResponseEntity.ok(incomeService.updateIncome(id, dto));
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteIncome(@PathVariable Long id) {
+        try {
+            incomeService.deleteIncome(id);
+            return ResponseEntity.ok(null);
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+
+}
+
+StatsController: 
+package com.example.expensetracker.controller;
+
+import com.example.expensetracker.dto.GraphDTO;
+import com.example.expensetracker.services.stats.StatsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/stats")
+@RequiredArgsConstructor
+@CrossOrigin("*")
+public class StatsController {
+    private final StatsService statsService;
+
+    @GetMapping("/chart")
+    public ResponseEntity<GraphDTO> getChartDetails(){
+        return ResponseEntity.ok(statsService.getChartData());
+    }
+    @GetMapping
+    public ResponseEntity<?> getStats(){
+        return ResponseEntity.ok(statsService.getStats());
+    }
+}
+
+package dto
+- ExpenseDTO: 
+package com.example.expensetracker.dto;
+
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+public class ExpenseDTO {
+    private Long id;
+    private String title;
+    private String description;
+    private String category;
+    private LocalDate date;
+    private Integer amount;
+
+}
+IncomeDTO:
+package com.example.expensetracker.dto;
+
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+public class IncomeDTO {
+    private Long id;
+    private String title;
+    private Integer amount;
+    private LocalDate date;
+    private String category;
+    private String description;
+
+
+}
+GraphDTO: 
+package com.example.expensetracker.dto;
+
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.entity.Income;
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class GraphDTO {
+
+    private List<Expense> expenseList;
+    private List<Income> incomeList;
+}
+StatsDTO: 
+package com.example.expensetracker.dto;
+
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.entity.Income;
+import lombok.Data;
+
+@Data
+public class StatsDTO {
+    private Double income;
+    private Double expense;
+    private Income latestIncome;
+    private Expense latestExpense;
+    private Double balance;
+    private Double minIncome;
+    private Double maxIncome;
+    private Double minExpense;
+    private Double maxExpense;
+}
+
+package entity
+-Expense:
+package com.example.expensetracker.entity;
+
+import com.example.expensetracker.dto.ExpenseDTO;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Entity
+@Data
+public class Expense {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String title;
+    private String description; // Changed from 'descriptions' to 'description'
+    private String category;
+    private LocalDate date;
+    private Integer amount;
+
+    public ExpenseDTO getExpenseDTO() {
+        ExpenseDTO expenseDTO = new ExpenseDTO();
+        expenseDTO.setId(id);
+        expenseDTO.setTitle(title);
+        expenseDTO.setAmount(amount);
+        expenseDTO.setCategory(category);
+        expenseDTO.setDescription(description);
+        expenseDTO.setDate(date);
+        return expenseDTO;
+    }
+
+}
+Income: 
+package com.example.expensetracker.entity;
+
+import com.example.expensetracker.dto.IncomeDTO;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Entity
+@Data
+public class Income {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String title;
+    private Integer amount;
+    private LocalDate date;
+    private String category;
+    private String description;
+
+    public IncomeDTO getIncomeDTO() {
+        IncomeDTO incomeDTO = new IncomeDTO(); // Create a new instance
+        incomeDTO.setId(id);                  // Use the instance to call setters
+        incomeDTO.setTitle(title);
+        incomeDTO.setAmount(amount);
+        incomeDTO.setCategory(category);
+        incomeDTO.setDescription(description);
+        incomeDTO.setDate(date);
+
+        return incomeDTO;                     // Return the instance
+    }
+}
+
+package repository
+-ExpenseRepository: 
+package com.example.expensetracker.repository;
+
+import com.example.expensetracker.entity.Expense;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface ExpenseRepository extends JpaRepository<Expense, Long> {
+    List<Expense> findByDateBetween(LocalDate startDate, LocalDate endDate);
+
+    @Query("SELECT SUM(e.amount) FROM Expense e")
+    Double sumAllAmounts();
+
+    Optional<Expense> findFirstByOrderByDateDesc();
+}
+IncomeRepository:
+package com.example.expensetracker.repository;
+
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.entity.Income;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface IncomeRepository extends JpaRepository<Income, Long> {
+
+    List<Income> findByDateBetween(LocalDate startDate, LocalDate endDate);
+
+    @Query("SELECT SUM(i.amount) FROM Income i")
+    Double sumAllAmounts();
+
+    Optional<Income> findFirstByOrderByDateDesc();
+
+}
+
+package services.expense
+- ExpenseService:
+package com.example.expensetracker.services.expense;
+
+import com.example.expensetracker.dto.ExpenseDTO;
+import com.example.expensetracker.entity.Expense;
+
+import java.util.List;
+
+public interface ExpenseService {
+
+    Expense postExpense(ExpenseDTO expenseDTO);
+
+    List<Expense> getAllExpenses();
+    Expense getExpenseById(Long id);
+    Expense updateExpense(Long id, ExpenseDTO expenseDTO);
+    void deleteExpense(Long id);
+}
+
+ExpenseServiceImpl:
+package com.example.expensetracker.services.expense;
+
+import com.example.expensetracker.dto.ExpenseDTO;
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.repository.ExpenseRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ExpenseServiceImpl implements ExpenseService {
+
+    private final ExpenseRepository expenseRepository;
+
+    public Expense postExpense(ExpenseDTO expenseDTO){
+        return saveOrUpdateExpense(new Expense(), expenseDTO);
+    }
+
+    private Expense saveOrUpdateExpense(Expense expense, ExpenseDTO expenseDTO) {
+        expense.setTitle(expenseDTO.getTitle());
+        expense.setDate(expenseDTO.getDate());
+        expense.setAmount(expenseDTO.getAmount());
+        expense.setCategory(expenseDTO.getCategory());
+        expense.setDescription(expenseDTO.getDescription());
+
+        return expenseRepository.save(expense);
+    }
+    public Expense updateExpense(Long id, ExpenseDTO expenseDTO){
+        Optional<Expense> optionalExpense = expenseRepository.findById(id);
+        if(optionalExpense.isPresent()){
+            return saveOrUpdateExpense(optionalExpense.get(), expenseDTO);
+        }else {
+            throw new EntityNotFoundException("Expense is not present with id "+ id);
+        }
+    }
+
+    public List<Expense> getAllExpenses(){
+        return expenseRepository.findAll().stream()
+                .sorted(Comparator.comparing(Expense::getDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    public Expense getExpenseById(Long id){
+        Optional<Expense> optionalExpense = expenseRepository.findById(id);
+        if(optionalExpense.isPresent()){
+            return optionalExpense.get();
+        }else{
+            throw new EntityNotFoundException("Expense is not present with id " + id);
+        }
+    }
+
+    public void deleteExpense(Long id){
+        Optional<Expense>optionalExpense = expenseRepository.findById(id);
+        if (optionalExpense.isPresent()) {
+            expenseRepository.deleteById(id);
+        }else {
+            throw new EntityNotFoundException("Expense is not found with id " + id);
+        }
+
+        }
+    }
+package services.income
+IncomeService: 
+package com.example.expensetracker.services.income;
+
+import com.example.expensetracker.dto.IncomeDTO;
+import com.example.expensetracker.entity.Income;
+
+import java.util.List;
+
+public interface IncomeService {
+
+    Income postIncome(IncomeDTO incomeDTO);
+
+    List<Income> getAllIncomes();
+    Income getIncomeById(Long id);
+    Income updateIncome(Long id, IncomeDTO incomeDTO);
+    void deleteIncome(Long id);
+
+}
+IncomeServiceImpl:
+package com.example.expensetracker.services.income;
+
+import com.example.expensetracker.dto.IncomeDTO;
+import com.example.expensetracker.entity.Income;
+import com.example.expensetracker.repository.IncomeRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class IncomeServiceImpl implements IncomeService{
+
+    private final IncomeRepository incomeRepository;
+
+    public Income postIncome(IncomeDTO incomeDTO){
+        return saveOrUpdateIncome(new Income(), incomeDTO);
+    }
+
+    private Income saveOrUpdateIncome(Income income, IncomeDTO incomeDTO) {
+        income.setTitle(incomeDTO.getTitle());
+        income.setDate(incomeDTO.getDate());
+        income.setAmount(incomeDTO.getAmount());
+        income.setCategory(incomeDTO.getCategory());
+        income.setDescription(incomeDTO.getDescription());
+
+        return incomeRepository.save(income);
+    }
+    public Income updateIncome(Long id, IncomeDTO incomeDTO){
+        Optional<Income> optionalIncome = incomeRepository.findById(id);
+        if(optionalIncome.isPresent()){
+            return saveOrUpdateIncome(optionalIncome.get(), incomeDTO);
+        }else {
+            throw new EntityNotFoundException("Income is not present with id "+ id);
+        }
+    }
+
+    public List<Income> getAllIncomes(){
+        return incomeRepository.findAll().stream()
+                .sorted(Comparator.comparing(Income::getDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    public Income getIncomeById(Long id){
+        Optional<Income> optionalIncome = incomeRepository.findById(id);
+        if(optionalIncome.isPresent()){
+            return optionalIncome.get();
+        }else{
+            throw new EntityNotFoundException("Income is not present with id " + id);
+        }
+    }
+
+    public void deleteIncome(Long id){
+        Optional<Income>optionalIncome = incomeRepository.findById(id);
+        if (optionalIncome.isPresent()) {
+            incomeRepository.deleteById(id);
+        }else {
+            throw new EntityNotFoundException("Income is not found with id " + id);
+        }
+
+    }
+}
+package stats
+StatsService:
+package com.example.expensetracker.services.stats;
+
+import com.example.expensetracker.dto.GraphDTO;
+import com.example.expensetracker.dto.StatsDTO;
+
+public interface StatsService {
+    GraphDTO getChartData();
+    StatsDTO getStats();
+}
+
+StatsServiceImpl:
+package com.example.expensetracker.services.stats;
+
+import com.example.expensetracker.dto.GraphDTO;
+import com.example.expensetracker.dto.StatsDTO;
+import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.entity.Income;
+import com.example.expensetracker.repository.ExpenseRepository;
+import com.example.expensetracker.repository.IncomeRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
+
+@Service
+@RequiredArgsConstructor
+public class StatsServiceImpl implements StatsService {
+    private final IncomeRepository incomeRepository;
+    private final ExpenseRepository expenseRepository;
+
+    public GraphDTO getChartData(){
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(27);
+
+        GraphDTO graphDTO = new GraphDTO();
+        graphDTO.setExpenseList(expenseRepository.findByDateBetween(startDate,endDate));
+        graphDTO.setIncomeList(incomeRepository.findByDateBetween(startDate,endDate));
+
+        return graphDTO;
+    }
+
+    public StatsDTO getStats(){
+        Double totalIncome = incomeRepository.sumAllAmounts();
+        Double totalExpense = expenseRepository.sumAllAmounts();
+
+        Optional<Income> optionalIncome = incomeRepository.findFirstByOrderByDateDesc();
+        Optional<Expense> optionalExpense = expenseRepository.findFirstByOrderByDateDesc();
+
+
+        StatsDTO statsDTO = new StatsDTO();
+        statsDTO.setExpense(totalExpense);
+        statsDTO.setIncome(totalIncome);
+
+        optionalIncome.ifPresent(income -> statsDTO.setLatestIncome(income));
+        optionalExpense.ifPresent(expense -> statsDTO.setLatestExpense(expense));
+
+        statsDTO.setBalance(totalIncome-totalExpense);
+
+        List<Income> incomeList = incomeRepository.findAll();
+        List<Expense> expenseList = expenseRepository.findAll();
+
+        OptionalDouble minIncome = incomeList.stream().mapToDouble(Income::getAmount).min();
+        OptionalDouble maxIncome = incomeList.stream().mapToDouble(Income::getAmount).max();
+
+        OptionalDouble minExpense = expenseList.stream().mapToDouble(Expense::getAmount).min();
+        OptionalDouble maxExpense = expenseList.stream().mapToDouble(Expense::getAmount).max();
+
+        statsDTO.setMaxExpense(maxExpense.isPresent() ? maxExpense.getAsDouble() : null );
+        statsDTO.setMinExpense(minExpense.isPresent() ? minExpense.getAsDouble() : null );
+
+        statsDTO.setMaxIncome(maxIncome.isPresent() ? maxIncome.getAsDouble() : null );
+        statsDTO.setMinIncome(minIncome.isPresent() ? minIncome.getAsDouble() : null );
+
+        return statsDTO;
+    }
+}
+
+ExpensetrackerApplication: 
+package com.example.expensetracker;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class ExpensetrackerApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ExpensetrackerApplication.class, args);
+	}
+
+}
+
+application.properties: spring.datasource.url=jdbc:postgresql://localhost:5432/expense_tracker
+spring.datasource.username=postgres
+spring.datasource.password=100403
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+pom.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.0</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+
+	<groupId>com.example</groupId>
+	<artifactId>expensetracker</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>expensetracker</name>
+	<description>Expense Tracker Application</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+
+	<properties>
+		<java.version>17</java.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<!--
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        -->
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!--
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        -->
+
+
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.2.0</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
