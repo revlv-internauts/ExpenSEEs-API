@@ -1,7 +1,10 @@
 package com.example.expensetracker.entity;
 
 import com.example.expensetracker.dto.ExpenseDTO;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -14,14 +17,10 @@ public class Expense {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
-    private String description;
+    private String description; // Changed from 'descriptions' to 'description'
     private String category;
     private LocalDate date;
     private Integer amount;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
 
     public ExpenseDTO getExpenseDTO() {
         ExpenseDTO expenseDTO = new ExpenseDTO();
@@ -33,4 +32,5 @@ public class Expense {
         expenseDTO.setDate(date);
         return expenseDTO;
     }
+
 }

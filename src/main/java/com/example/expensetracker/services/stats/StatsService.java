@@ -2,9 +2,10 @@ package com.example.expensetracker.services.stats;
 
 import com.example.expensetracker.dto.GraphDTO;
 import com.example.expensetracker.dto.StatsDTO;
-import com.example.expensetracker.entity.User;
+
+import java.time.LocalDate;
 
 public interface StatsService {
-    GraphDTO getChartData(User user);
-    StatsDTO getStats(User user);
+    GraphDTO getChartData(int days, LocalDate startDate, LocalDate endDate);
+    StatsDTO getStats();
 }

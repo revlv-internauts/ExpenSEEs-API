@@ -2,7 +2,6 @@ package com.example.expensetracker.services.expense;
 
 import com.example.expensetracker.dto.ExpenseDTO;
 import com.example.expensetracker.entity.Expense;
-import com.example.expensetracker.entity.User;
 import com.example.expensetracker.repository.ExpenseRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +18,8 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
 
-    public Expense postExpense(ExpenseDTO expenseDTO, User user) {
-        Expense expense = new Expense();
-        expense.setUser(user);
-        return saveOrUpdateExpense(expense, expenseDTO);
+    public Expense postExpense(ExpenseDTO expenseDTO){
+        return saveOrUpdateExpense(new Expense(), expenseDTO);
     }
 
     private Expense saveOrUpdateExpense(Expense expense, ExpenseDTO expenseDTO) {
@@ -31,39 +28,40 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setAmount(expenseDTO.getAmount());
         expense.setCategory(expenseDTO.getCategory());
         expense.setDescription(expenseDTO.getDescription());
+
         return expenseRepository.save(expense);
     }
-
-    public Expense updateExpense(Long id, ExpenseDTO expenseDTO, User user) {
+    public Expense updateExpense(Long id, ExpenseDTO expenseDTO){
         Optional<Expense> optionalExpense = expenseRepository.findById(id);
-        if (optionalExpense.isPresent() && optionalExpense.get().getUser().getId().equals(user.getId())) {
+        if(optionalExpense.isPresent()){
             return saveOrUpdateExpense(optionalExpense.get(), expenseDTO);
-        } else {
-            throw new EntityNotFoundException("Expense not found or access denied for id " + id);
+        }else {
+            throw new EntityNotFoundException("Expense is not present with id "+ id);
         }
     }
 
-    public List<Expense> getAllExpenses(User user) {
-        return expenseRepository.findByUser(user).stream()
+    public List<Expense> getAllExpenses(){
+        return expenseRepository.findAll().stream()
                 .sorted(Comparator.comparing(Expense::getDate).reversed())
                 .collect(Collectors.toList());
     }
 
-    public Expense getExpenseById(Long id, User user) {
+    public Expense getExpenseById(Long id){
         Optional<Expense> optionalExpense = expenseRepository.findById(id);
-        if (optionalExpense.isPresent() && optionalExpense.get().getUser().getId().equals(user.getId())) {
+        if(optionalExpense.isPresent()){
             return optionalExpense.get();
-        } else {
-            throw new EntityNotFoundException("Expense not found or access denied for id " + id);
+        }else{
+            throw new EntityNotFoundException("Expense is not present with id " + id);
         }
     }
 
-    public void deleteExpense(Long id, User user) {
-        Optional<Expense> optionalExpense = expenseRepository.findById(id);
-        if (optionalExpense.isPresent() && optionalExpense.get().getUser().getId().equals(user.getId())) {
+    public void deleteExpense(Long id){
+        Optional<Expense>optionalExpense = expenseRepository.findById(id);
+        if (optionalExpense.isPresent()) {
             expenseRepository.deleteById(id);
-        } else {
-            throw new EntityNotFoundException("Expense not found or access denied for id " + id);
+        }else {
+            throw new EntityNotFoundException("Expense is not found with id " + id);
         }
+
     }
 }

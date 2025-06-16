@@ -1,7 +1,7 @@
 package com.example.expensetracker.repository;
 
+import com.example.expensetracker.entity.Expense;
 import com.example.expensetracker.entity.Income;
-import com.example.expensetracker.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,12 +12,12 @@ import java.util.Optional;
 
 @Repository
 public interface IncomeRepository extends JpaRepository<Income, Long> {
-    List<Income> findByDateBetweenAndUser(LocalDate startDate, LocalDate endDate, User user);
 
-    @Query("SELECT SUM(i.amount) FROM Income i WHERE i.user = :user")
-    Double sumAllAmountsByUser(User user);
+    List<Income> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
-    Optional<Income> findFirstByUserOrderByDateDesc(User user);
+    @Query("SELECT SUM(i.amount) FROM Income i")
+    Double sumAllAmounts();
 
-    List<Income> findByUser(User user);
+    Optional<Income> findFirstByOrderByDateDesc();
+
 }
