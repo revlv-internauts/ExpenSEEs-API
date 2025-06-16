@@ -30,7 +30,7 @@ public class StatsController {
             @RequestParam(required = false) LocalDate endDate) {
         try {
             GraphDTO graphDTO = statsService.getChartData(days, startDate, endDate);
-            if (graphDTO.getExpenseList().isEmpty() && graphDTO.getIncomeList().isEmpty()) {
+            if (graphDTO.getExpenseList().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.OK)
                         .body(new ErrorResponse("No data found for the specified period", HttpStatus.OK.value(), LocalDateTime.now().toString()));
             }
@@ -48,9 +48,9 @@ public class StatsController {
     public ResponseEntity<?> getStats() {
         try {
             StatsDTO statsDTO = statsService.getStats();
-            if (statsDTO.getIncome() == null && statsDTO.getExpense() == null) {
+            if (statsDTO.getExpense() == null) {
                 return ResponseEntity.status(HttpStatus.OK)
-                        .body(new ErrorResponse("No income or expense data available", HttpStatus.OK.value(), LocalDateTime.now().toString()));
+                        .body(new ErrorResponse("No expense data available", HttpStatus.OK.value(), LocalDateTime.now().toString()));
             }
             return ResponseEntity.ok(statsDTO);
         } catch (Exception ex) {
