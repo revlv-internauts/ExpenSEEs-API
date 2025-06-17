@@ -21,7 +21,7 @@ public class JwtUtil {
     private static final long serialVersionUID = 654352132132L;
     public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60; // 5 hours
 
-    private final SecretKey secretKey = Keys.secretKeyFor(io.jsonwebtoken.SignatureAlgorithm.HS512);
+    private final SecretKey secretKey = Keys.hmacShaKeyFor("my-very-secure-secret-key-1234567890".getBytes());
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);

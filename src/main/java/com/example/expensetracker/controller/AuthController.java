@@ -14,10 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,18 +35,20 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
+    // Sign up a new user
     @PostMapping("/signup")
     public ResponseEntity<Object> signUp(@RequestBody User user) {
         user.setPassword(encoder.encode(user.getPassword()));
         return userService.registerUser(user);
     }
 
+    // Sign in and generate JWT
     @PostMapping("/signin")
     public ResponseEntity<Object> signIn(@RequestBody User user) {
         User myUser = userRepository.findByUsername(user.getUsername());
         try {
-            if (!encoder.matches(user.getPassword(), myUser.getPassword())) {
-                return new ResponseEntity<>("Invalid password", HttpStatus.BAD_REQUEST);
+            if (myUser == null || !encoder.matches(user.getPassword(), myUser.getPassword())) {
+                return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
             }
 
             UserDetails userDetails = loginService.loadUserByUsername(user.getUsername());
@@ -60,10 +59,48 @@ public class AuthController {
             response.put("status", HttpStatus.OK.value());
             return ResponseEntity.ok(response);
 
-        } catch (UsernameNotFoundException e) {
-            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
         } catch (Exception e) {
-            return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>("Authentication failed", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // Get user details by username (requires JWT)
+    @GetMapping("/{username}")
+    public ResponseEntity<Object> getUser(@PathVariable String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+        // Remove password from response for security
+        user.setPassword(null);
+        return ResponseEntity.ok(user);
+    }
+
+    // Update user details (requires JWT)
+    @PutMapping("/{username}")
+    public ResponseEntity<Object> updateUser(@PathVariable String username, @RequestBody User userDetails) {
+        User existingUser = userRepository.findByUsername(username);
+        if (existingUser == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+        if (userDetails.getEmail() != null) {
+            existingUser.setEmail(userDetails.getEmail());
+        }
+        if (userDetails.getPassword() != null) {
+            existingUser.setPassword(encoder.encode(userDetails.getPassword()));
+        }
+        userRepository.save(existingUser);
+        return ResponseEntity.ok("User updated successfully");
+    }
+
+    // Delete user (requires JWT)
+    @DeleteMapping("/{username}")
+    public ResponseEntity<Object> deleteUser(@PathVariable String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+        userRepository.delete(user);
+        return ResponseEntity.ok("User deleted successfully");
     }
 }
