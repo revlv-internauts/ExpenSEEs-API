@@ -2,6 +2,7 @@ package com.example.expensetracker.controller;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.UserRepository;
@@ -11,6 +12,7 @@ import com.example.expensetracker.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,23 +47,22 @@ public class AuthController {
     // Sign in and generate JWT
     @PostMapping("/signin")
     public ResponseEntity<Object> signIn(@RequestBody User user) {
+        System.out.println("Attempting sign-in for: " + user.getUsername());
         User myUser = userRepository.findByUsername(user.getUsername());
-        try {
-            if (myUser == null || !encoder.matches(user.getPassword(), myUser.getPassword())) {
-                return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
-            }
-
-            UserDetails userDetails = loginService.loadUserByUsername(user.getUsername());
-            String jwt = jwtUtil.generateToken(userDetails);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("jwt", jwt);
-            response.put("status", HttpStatus.OK.value());
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return new ResponseEntity<>("Authentication failed", HttpStatus.INTERNAL_SERVER_ERROR);
+        if (myUser == null) {
+            System.out.println("User not found: " + user.getUsername());
+            return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
+        if (!encoder.matches(user.getPassword(), myUser.getPassword())) {
+            System.out.println("Password mismatch for: " + user.getUsername());
+            return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
+        }
+        UserDetails userDetails = loginService.loadUserByUsername(user.getUsername());
+        String jwt = jwtUtil.generateToken(userDetails);
+        Map<String, Object> response = new HashMap<>();
+        response.put("jwt", jwt);
+        response.put("status", HttpStatus.OK.value());
+        return ResponseEntity.ok(response);
     }
 
     // Get user details by username (requires JWT)
@@ -71,8 +72,7 @@ public class AuthController {
         if (user == null) {
             return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
         }
-        // Remove password from response for security
-        user.setPassword(null);
+        user.setPassword(null); // Security: exclude password
         return ResponseEntity.ok(user);
     }
 
@@ -102,5 +102,53 @@ public class AuthController {
         }
         userRepository.delete(user);
         return ResponseEntity.ok("User deleted successfully");
+    }
+
+    // Request password reset (user action)
+    @PostMapping("/request-password-reset")
+    public ResponseEntity<Object> requestPasswordReset(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+
+        // Generate a unique reset token and set expiration (e.g., 1 hour)
+        String resetToken = UUID.randomUUID().toString();
+        user.setResetToken(resetToken);
+        user.setResetExpiresAt(java.time.LocalDateTime.now().plusHours(1));
+
+        userRepository.save(user);
+        // In a real app, send this token via email; here, return it as a response
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Password reset requested. Please contact admin with token: " + resetToken);
+        return ResponseEntity.ok(response);
+    }
+
+    // Process password reset (admin-only action)
+    @PostMapping("/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String resetToken = request.get("resetToken");
+        String newPassword = request.get("newPassword");
+
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+
+        if (user.getResetToken() == null || !user.getResetToken().equals(resetToken) ||
+                user.getResetExpiresAt() == null || user.getResetExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            return new ResponseEntity<>("Invalid or expired reset token", HttpStatus.BAD_REQUEST);
+        }
+
+        // Reset password and clear token
+        user.setPassword(encoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetExpiresAt(null);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Password reset successfully");
     }
 }

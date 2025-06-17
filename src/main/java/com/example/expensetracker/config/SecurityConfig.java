@@ -26,12 +26,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/auth/signup", "/api/auth/signin", "/api/auth/request-password-reset").permitAll()
+                        .requestMatchers("/api/auth/reset-password").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/**", "/api/expenses/**").authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions().disable()); // Updated to disable frame options
+                .headers(headers -> headers.frameOptions().disable());
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

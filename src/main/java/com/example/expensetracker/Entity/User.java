@@ -1,15 +1,7 @@
 package com.example.expensetracker.Entity;
 
 import java.util.List;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name="users")
+@Table(name = "users")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +28,15 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Expense> expenses;
 
-    public User(String username,String password){
-        this.username=username;
-        this.password=password;
+    // New fields for password reset
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_expires_at")
+    private java.time.LocalDateTime resetExpiresAt;
+
+    public User(String username, String password) {
+        this.username = username;
+        this.password = password;
     }
 }
