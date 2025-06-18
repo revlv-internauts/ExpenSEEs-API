@@ -44,20 +44,40 @@ public class AuthController {
         return userService.registerUser(user);
     }
 
-    // Sign in and generate JWT
+    // Sign in with username or email
     @PostMapping("/signin")
-    public ResponseEntity<Object> signIn(@RequestBody User user) {
-        System.out.println("Attempting sign-in for: " + user.getUsername());
-        User myUser = userRepository.findByUsername(user.getUsername());
+    public ResponseEntity<Object> signIn(@RequestBody Map<String, String> credentials) {
+        System.out.println("Attempting sign-in with credentials: " + credentials);
+        String usernameOrEmail = credentials.get("username");
+        String email = credentials.get("email");
+        String password = credentials.get("password");
+
+        if (password == null || password.isEmpty()) {
+            System.out.println("Password is missing or empty");
+            return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
+        }
+
+        User myUser = null;
+        if (usernameOrEmail != null && !usernameOrEmail.isEmpty()) {
+            myUser = userRepository.findByUsername(usernameOrEmail);
+        } else if (email != null && !email.isEmpty()) {
+            myUser = userRepository.findByEmail(email).orElse(null);
+        } else {
+            System.out.println("Neither username nor email provided");
+            return new ResponseEntity<>("Username or email is required", HttpStatus.UNAUTHORIZED);
+        }
+
         if (myUser == null) {
-            System.out.println("User not found: " + user.getUsername());
+            System.out.println("User not found for: " + (usernameOrEmail != null ? usernameOrEmail : email));
             return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
-        if (!encoder.matches(user.getPassword(), myUser.getPassword())) {
-            System.out.println("Password mismatch for: " + user.getUsername());
+
+        if (!encoder.matches(password, myUser.getPassword())) {
+            System.out.println("Password mismatch for: " + (usernameOrEmail != null ? usernameOrEmail : email));
             return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
-        UserDetails userDetails = loginService.loadUserByUsername(user.getUsername());
+
+        UserDetails userDetails = loginService.loadUserByUsername(myUser.getUsername());
         String jwt = jwtUtil.generateToken(userDetails);
         Map<String, Object> response = new HashMap<>();
         response.put("jwt", jwt);
