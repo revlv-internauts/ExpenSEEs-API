@@ -26,14 +26,15 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup", "/api/auth/signin", "/api/auth/request-password-reset").permitAll()
-                        .requestMatchers("/api/auth/reset-password").hasRole("ADMIN")
-                        .requestMatchers("/api/auth/**", "/api/expenses/**").authenticated())
+                        .requestMatchers("/api/auth/**", "/forgotPassword/verifyMail/**", "/forgotPassword/verifyOtp/**").permitAll()
+                        .requestMatchers("/forgotPassword/changePassword/**").authenticated()
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions().disable());
-        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .headers(headers -> headers.frameOptions().disable())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
