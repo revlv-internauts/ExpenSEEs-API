@@ -7,14 +7,12 @@ import com.example.expensetracker.Entity.ForgotPassword;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.ForgotPasswordRepository;
 import com.example.expensetracker.Repository.UserRepository;
-import com.example.expensetracker.config.JwtUtil;
 import com.example.expensetracker.dto.MailBody;
 import com.example.expensetracker.service.EmailService;
 import com.example.expensetracker.util.ChangePassword;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +34,6 @@ public class ForgotPasswordController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
 
     // Send OTP to email for verification
     @PostMapping("/verifyMail/{email}")
@@ -65,7 +60,7 @@ public class ForgotPasswordController {
         return ResponseEntity.ok("OTP sent to your email for verification!");
     }
 
-    // Verify OTP and return a temporary JWT
+    // Verify OTP and return success message
     @PostMapping("/verifyOtp/{otp}/{email}")
     public ResponseEntity<Map<String, String>> verifyOtp(@PathVariable Integer otp, @PathVariable String email) {
         Map<String, String> response = new HashMap<>();
@@ -90,34 +85,29 @@ public class ForgotPasswordController {
             return new ResponseEntity<>(response, HttpStatus.EXPECTATION_FAILED);
         }
 
-        // Generate a temporary JWT valid for 15 minutes
-        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(), user.getPassword(), java.util.Collections.emptyList());
-        String tempJwt = jwtUtil.generateToken(userDetails); // Default 5-hour validity
-
         response.put("status", "success");
         response.put("message", "OTP verified successfully!");
-        response.put("tempJwt", tempJwt);
-        forgotPasswordRepository.deleteById(fp.getFpid()); // Clean up OTP
+        // Do not delete OTP here; keep it for changePassword verification
 
         return ResponseEntity.ok(response);
     }
 
-    // Change password with temporary JWT
+    // Change password with OTP re-verification
     @PostMapping("/changePassword/{email}")
     @Transactional
     public ResponseEntity<String> changePasswordHandler(@RequestBody ChangePassword changePassword,
                                                         @PathVariable String email,
-                                                        @RequestHeader("Authorization") String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return new ResponseEntity<>("Authorization token required", HttpStatus.UNAUTHORIZED);
-        }
-
-        String tempJwt = authorizationHeader.substring(7);
-        // Optional: Validate tempJwt expiration (implement in JwtUtil if needed)
-
+                                                        @RequestParam("otp") Integer otp) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email: " + email));
+
+        ForgotPassword fp = forgotPasswordRepository.findByOtpAndUser(otp, user)
+                .orElseThrow(() -> new RuntimeException("Invalid OTP for email: " + email));
+
+        if (fp.getExpirationTime().before(Date.from(Instant.now()))) {
+            forgotPasswordRepository.deleteById(fp.getFpid());
+            return new ResponseEntity<>("OTP has expired. Please request a new one.", HttpStatus.EXPECTATION_FAILED);
+        }
 
         if (!Objects.equals(changePassword.password(), changePassword.repeatPassword())) {
             return new ResponseEntity<>("Passwords do not match. Please try again.", HttpStatus.BAD_REQUEST);
@@ -125,6 +115,7 @@ public class ForgotPasswordController {
 
         String encodedPassword = passwordEncoder.encode(changePassword.password());
         userRepository.updatePassword(email, encodedPassword);
+        forgotPasswordRepository.deleteById(fp.getFpid()); // Clean up after successful change
 
         return ResponseEntity.ok("Password changed successfully!");
     }
