@@ -35,7 +35,7 @@ public class ForgotPasswordController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Send OTP to email for verification
+    // Send OTP to email for verification (Forgot Password)
     @PostMapping("/verifyMail/{email}")
     public ResponseEntity<String> verifyEmail(@PathVariable String email) {
         User user = userRepository.findByEmail(email)
@@ -60,7 +60,7 @@ public class ForgotPasswordController {
         return ResponseEntity.ok("OTP sent to your email for verification!");
     }
 
-    // Verify OTP and return success message
+    // Verify OTP for Forgot Password
     @PostMapping("/verifyOtp/{otp}/{email}")
     public ResponseEntity<Map<String, String>> verifyOtp(@PathVariable Integer otp, @PathVariable String email) {
         Map<String, String> response = new HashMap<>();
@@ -87,17 +87,17 @@ public class ForgotPasswordController {
 
         response.put("status", "success");
         response.put("message", "OTP verified successfully!");
-        // Do not delete OTP here; keep it for changePassword verification
+        // Keep OTP for changePassword verification
 
         return ResponseEntity.ok(response);
     }
 
-    // Change password with OTP re-verification
+    // Change password after Forgot Password verification
     @PostMapping("/changePassword/{email}")
     @Transactional
-    public ResponseEntity<String> changePasswordHandler(@RequestBody ChangePassword changePassword,
-                                                        @PathVariable String email,
-                                                        @RequestParam("otp") Integer otp) {
+    public ResponseEntity<String> changePasswordHandlerForgot(@RequestBody ChangePassword changePassword,
+                                                              @PathVariable String email,
+                                                              @RequestParam("otp") Integer otp) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email: " + email));
 
@@ -118,6 +118,21 @@ public class ForgotPasswordController {
         forgotPasswordRepository.deleteById(fp.getFpid()); // Clean up after successful change
 
         return ResponseEntity.ok("Password changed successfully!");
+    }
+
+    // Reset password after login (no OTP required)
+    @PostMapping("/resetPassword/{email}")
+    @Transactional
+    public ResponseEntity<String> changePasswordHandler(@RequestBody ChangePassword changePassword,
+                                                        @PathVariable String email) {
+        if (!Objects.equals(changePassword.password(), changePassword.repeatPassword())) {
+            return new ResponseEntity<>("Please enter the password again!", HttpStatus.EXPECTATION_FAILED);
+        }
+
+        String encodedPassword = passwordEncoder.encode(changePassword.password());
+        userRepository.updatePassword(email, encodedPassword);
+
+        return ResponseEntity.ok("Password has been changed!");
     }
 
     private Integer otpGenerator() {
