@@ -1,9 +1,11 @@
 package com.example.expensetracker.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Entity.User;
@@ -33,14 +35,18 @@ public class ExpenseService {
     public Expense addExpense(ExpenseDto expenseDto) {
         String username = getCurrentUsername();
         User myUser = userRepository.findByUsername(username);
-        if(myUser == null) throw new UsernameNotFoundException("user not found with username :" + username);
+        if (myUser == null) throw new UsernameNotFoundException("User not found with username: " + username);
+
         Expense expense = new Expense();
         expense.setCategory(expenseDto.getCategory());
         expense.setAmount(expenseDto.calculateTotal());
         expense.setComments(expenseDto.getComments());
+        expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
+        expense.setImagePath(expenseDto.getImagePath()); // Set image path if provided
         expense.setCreatedAt(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
         expense.setUser(myUser);
+
         try {
             expenseRepository.save(expense);
         } catch (Exception e) {
@@ -77,6 +83,8 @@ public class ExpenseService {
         existing.setCategory(expenseDto.getCategory());
         existing.setAmount(expenseDto.calculateTotal());
         existing.setComments(expenseDto.getComments());
+        existing.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
+        existing.setImagePath(expenseDto.getImagePath()); // Update image path if provided
         existing.setUpdatedAt(LocalDateTime.now());
         return expenseRepository.save(existing);
     }
@@ -92,5 +100,14 @@ public class ExpenseService {
         });
 
         return distribution;
+    }
+
+    // New method for recent transactions
+    public List<Expense> getRecentTransactions(int limit) {
+        User myUser = userRepository.findByUsername(getCurrentUsername());
+        return expenseRepository.findAllByUser(myUser).stream()
+                .sorted((e1, e2) -> e2.getCreatedAt().compareTo(e1.getCreatedAt()))
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 }

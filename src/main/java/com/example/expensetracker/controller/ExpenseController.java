@@ -2,15 +2,23 @@ package com.example.expensetracker.controller;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -24,18 +32,6 @@ public class ExpenseController {
 
     @PostMapping
     public Expense addExpense(@RequestBody ExpenseDto expenseDto) {
-        if (expenseDto.getAmount() == null && expenseDto.getComments() != null) {
-            String[] parts = expenseDto.getComments().split("\\s+");
-            if (parts.length >= 2) {
-                try {
-                    double quantity = Double.parseDouble(parts[0]);
-                    double amountPerUnit = Double.parseDouble(parts[1].replace("₱", ""));
-                    expenseDto.setAmount(quantity * amountPerUnit);
-                } catch (NumberFormatException e) {
-                    expenseDto.setAmount(0.0);
-                }
-            }
-        }
         return expenseService.addExpense(expenseDto);
     }
 
@@ -71,5 +67,38 @@ public class ExpenseController {
                 .sorted(Comparator.comparing(Expense::getAmount).reversed())
                 .limit(5)
                 .collect(Collectors.toList());
+    }
+
+    // New endpoint for uploading image
+    @PostMapping("/upload-image/{expenseId}")
+    public String uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
+        try {
+            // Define upload directory (e.g., ./uploads)
+            String uploadDir = "uploads/";
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // Generate unique file name
+            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(fileName);
+            Files.write(filePath, file.getBytes());
+
+            // Update expense with image path
+            Expense expense = expenseRepository.findById(expenseId).orElseThrow();
+            expense.setImagePath(uploadDir + fileName);
+            expenseRepository.save(expense);
+
+            return "Image uploaded successfully: " + uploadDir + fileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload image", e);
+        }
+    }
+
+    // New endpoint for recent transactions
+    @GetMapping("/recent")
+    public List<Expense> getRecentTransactions(@RequestParam(defaultValue = "5") int limit) {
+        return expenseService.getRecentTransactions(limit);
     }
 }
