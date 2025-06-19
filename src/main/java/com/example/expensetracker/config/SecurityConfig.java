@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/forgotPassword/changePassword/**").permitAll() // OTP-based change
                         .requestMatchers("/api/user/resetPassword").authenticated() // Requires login
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/api/expenses/**", "/api/funds/**", "/api/reports/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

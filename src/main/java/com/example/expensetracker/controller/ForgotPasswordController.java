@@ -35,7 +35,6 @@ public class ForgotPasswordController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Send OTP to email for verification (Forgot Password)
     @PostMapping("/verifyMail/{email}")
     public ResponseEntity<String> verifyEmail(@PathVariable String email) {
         User user = userRepository.findByEmail(email)
@@ -60,7 +59,6 @@ public class ForgotPasswordController {
         return ResponseEntity.ok("OTP sent to your email for verification!");
     }
 
-    // Verify OTP for Forgot Password
     @PostMapping("/verifyOtp/{otp}/{email}")
     public ResponseEntity<Map<String, String>> verifyOtp(@PathVariable Integer otp, @PathVariable String email) {
         Map<String, String> response = new HashMap<>();
@@ -87,12 +85,9 @@ public class ForgotPasswordController {
 
         response.put("status", "success");
         response.put("message", "OTP verified successfully!");
-        // Keep OTP for changePassword verification
-
         return ResponseEntity.ok(response);
     }
 
-    // Change password after Forgot Password verification
     @PostMapping("/changePassword/{email}")
     @Transactional
     public ResponseEntity<String> changePasswordHandlerForgot(@RequestBody ChangePassword changePassword,
@@ -115,12 +110,11 @@ public class ForgotPasswordController {
 
         String encodedPassword = passwordEncoder.encode(changePassword.password());
         userRepository.updatePassword(email, encodedPassword);
-        forgotPasswordRepository.deleteById(fp.getFpid()); // Clean up after successful change
+        forgotPasswordRepository.deleteById(fp.getFpid());
 
         return ResponseEntity.ok("Password changed successfully!");
     }
 
-    // Reset password after login (no OTP required)
     @PostMapping("/resetPassword/{email}")
     @Transactional
     public ResponseEntity<String> changePasswordHandler(@RequestBody ChangePassword changePassword,

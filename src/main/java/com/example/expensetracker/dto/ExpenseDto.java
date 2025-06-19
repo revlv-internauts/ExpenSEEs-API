@@ -10,10 +10,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ExpenseDto {
     private String category;
-
-    @Column(nullable = false)
     private Double amount;
-
+    private Integer quantity;
+    private Double amountPerUnit;
     private String comments;
 
+    public Double calculateTotal() {
+        if (quantity != null && amountPerUnit != null) {
+            return quantity * amountPerUnit;
+        }
+        return amount != null ? amount : 0.0;
+    }
 }

@@ -1,7 +1,9 @@
 package com.example.expensetracker.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Entity.User;
@@ -29,13 +31,12 @@ public class ExpenseService {
     UserService userService;
 
     public Expense addExpense(ExpenseDto expenseDto) {
-
         String username = getCurrentUsername();
         User myUser = userRepository.findByUsername(username);
         if(myUser == null) throw new UsernameNotFoundException("user not found with username :" + username);
         Expense expense = new Expense();
         expense.setCategory(expenseDto.getCategory());
-        expense.setAmount(expenseDto.getAmount());
+        expense.setAmount(expenseDto.calculateTotal());
         expense.setComments(expenseDto.getComments());
         expense.setCreatedAt(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
@@ -64,7 +65,6 @@ public class ExpenseService {
     public double getTotalExpenseAmount() {
         String username = getCurrentUsername();
         User myUser = userRepository.findByUsername(username);
-
         return myUser.getExpenses()
                 .stream()
                 .mapToDouble(Expense::getAmount)
@@ -75,9 +75,22 @@ public class ExpenseService {
     public Expense updateExpense(Long id, ExpenseDto expenseDto) {
         Expense existing = expenseRepository.findById(id).orElseThrow();
         existing.setCategory(expenseDto.getCategory());
-        existing.setAmount(expenseDto.getAmount());
+        existing.setAmount(expenseDto.calculateTotal());
         existing.setComments(expenseDto.getComments());
         existing.setUpdatedAt(LocalDateTime.now());
         return expenseRepository.save(existing);
+    }
+
+    public Map<String, Double> getExpenseDistributionByCategory() {
+        String username = getCurrentUsername();
+        User myUser = userRepository.findByUsername(username);
+        if (myUser == null) throw new UsernameNotFoundException("User not found with username: " + username);
+
+        Map<String, Double> distribution = new HashMap<>();
+        myUser.getExpenses().forEach(expense -> {
+            distribution.merge(expense.getCategory(), expense.getAmount(), Double::sum);
+        });
+
+        return distribution;
     }
 }

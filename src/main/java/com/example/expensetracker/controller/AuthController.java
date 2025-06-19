@@ -37,14 +37,12 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
-    // Sign up a new user
     @PostMapping("/signup")
     public ResponseEntity<Object> signUp(@RequestBody User user) {
         user.setPassword(encoder.encode(user.getPassword()));
         return userService.registerUser(user);
     }
 
-    // Sign in with username or email
     @PostMapping("/signin")
     public ResponseEntity<Object> signIn(@RequestBody Map<String, String> credentials) {
         System.out.println("Attempting sign-in with credentials: " + credentials);
@@ -85,7 +83,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Get user details by username (requires JWT)
     @GetMapping("/{username}")
     public ResponseEntity<Object> getUser(@PathVariable String username) {
         User user = userRepository.findByUsername(username);
@@ -96,7 +93,6 @@ public class AuthController {
         return ResponseEntity.ok(user);
     }
 
-    // Update user details (requires JWT)
     @PutMapping("/{username}")
     public ResponseEntity<Object> updateUser(@PathVariable String username, @RequestBody User userDetails) {
         User existingUser = userRepository.findByUsername(username);
@@ -113,7 +109,6 @@ public class AuthController {
         return ResponseEntity.ok("User updated successfully");
     }
 
-    // Delete user (requires JWT)
     @DeleteMapping("/{username}")
     public ResponseEntity<Object> deleteUser(@PathVariable String username) {
         User user = userRepository.findByUsername(username);
@@ -124,7 +119,6 @@ public class AuthController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
-    // Request password reset (user action)
     @PostMapping("/request-password-reset")
     public ResponseEntity<Object> requestPasswordReset(@RequestBody Map<String, String> request) {
         String username = request.get("username");
@@ -133,19 +127,16 @@ public class AuthController {
             return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
         }
 
-        // Generate a unique reset token and set expiration (e.g., 1 hour)
         String resetToken = UUID.randomUUID().toString();
         user.setResetToken(resetToken);
         user.setResetExpiresAt(java.time.LocalDateTime.now().plusHours(1));
 
         userRepository.save(user);
-        // In a real app, send this token via email; here, return it as a response
         Map<String, String> response = new HashMap<>();
         response.put("message", "Password reset requested. Please contact admin with token: " + resetToken);
         return ResponseEntity.ok(response);
     }
 
-    // Process password reset (admin-only action)
     @PostMapping("/reset-password")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
@@ -163,7 +154,6 @@ public class AuthController {
             return new ResponseEntity<>("Invalid or expired reset token", HttpStatus.BAD_REQUEST);
         }
 
-        // Reset password and clear token
         user.setPassword(encoder.encode(newPassword));
         user.setResetToken(null);
         user.setResetExpiresAt(null);

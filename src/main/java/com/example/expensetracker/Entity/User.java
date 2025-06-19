@@ -28,7 +28,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Expense> expenses;
 
-    // New fields for password reset
     @Column(name = "reset_token")
     private String resetToken;
 

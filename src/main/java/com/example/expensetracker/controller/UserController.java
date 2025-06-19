@@ -22,7 +22,6 @@ public class UserController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Reset password after login (requires authentication)
     @PostMapping("/resetPassword")
     @Transactional
     public ResponseEntity<String> resetPassword(@RequestBody ChangePassword changePassword,
