@@ -2,6 +2,12 @@ package com.example.expensetracker.controller;
 
 import java.util.Comparator;
 import java.util.List;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Repository.ExpenseRepository;
@@ -12,13 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -50,6 +49,12 @@ public class ExpenseController {
         expenseRepository.deleteById(id);
     }
 
+    @DeleteMapping
+    public ResponseEntity<String> deleteExpenses(@RequestBody List<Long> ids) {
+        expenseRepository.deleteAllById(ids);
+        return ResponseEntity.ok("Expenses deleted successfully");
+    }
+
     @GetMapping("/total-amount")
     public Double getTotalExpenseAmount() {
         return expenseService.getTotalExpenseAmount();
@@ -69,23 +74,19 @@ public class ExpenseController {
                 .collect(Collectors.toList());
     }
 
-    // New endpoint for uploading image
     @PostMapping("/upload-image/{expenseId}")
     public String uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
         try {
-            // Define upload directory (e.g., ./uploads)
             String uploadDir = "uploads/";
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            // Generate unique file name
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path filePath = uploadPath.resolve(fileName);
             Files.write(filePath, file.getBytes());
 
-            // Update expense with image path
             Expense expense = expenseRepository.findById(expenseId).orElseThrow();
             expense.setImagePath(uploadDir + fileName);
             expenseRepository.save(expense);
@@ -96,7 +97,15 @@ public class ExpenseController {
         }
     }
 
-    // New endpoint for recent transactions
+    @GetMapping("/image/{filename}")
+    public ResponseEntity<byte[]> getImage(@PathVariable String filename) throws IOException {
+        Path filePath = Paths.get("uploads/" + filename);
+        byte[] imageBytes = Files.readAllBytes(filePath);
+        return ResponseEntity.ok()
+                .header("Content-Type", "image/jpeg")
+                .body(imageBytes);
+    }
+
     @GetMapping("/recent")
     public List<Expense> getRecentTransactions(@RequestParam(defaultValue = "5") int limit) {
         return expenseService.getRecentTransactions(limit);
