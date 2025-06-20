@@ -26,8 +26,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/forgotPassword/verifyMail/**", "/forgotPassword/verifyOtp/**").permitAll()
-                        .requestMatchers("/forgotPassword/changePassword/**").permitAll() // OTP-based change
+                        .requestMatchers("/api/auth/**", "/forgotPassword/verifyMail/**", "/forgotPassword/verifyOtp/**", "/forgotPassword/changePassword/**").permitAll()
+                        .requestMatchers("/forgotPassword/verifyOtp/**").permitAll() // Already permitted, kept for clarity
                         .requestMatchers("/api/user/resetPassword").authenticated() // Requires login
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/expenses/**", "/api/funds/**", "/api/reports/**").authenticated()

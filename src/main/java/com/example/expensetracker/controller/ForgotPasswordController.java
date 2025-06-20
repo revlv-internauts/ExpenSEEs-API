@@ -36,9 +36,13 @@ public class ForgotPasswordController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/verifyMail/{email}")
+    @Transactional
     public ResponseEntity<String> verifyEmail(@PathVariable String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email: " + email));
+
+        // Delete any existing ForgotPassword records for this user
+        forgotPasswordRepository.deleteByUser(user);
 
         int otp = otpGenerator();
         MailBody mailBody = MailBody.builder()
@@ -53,10 +57,14 @@ public class ForgotPasswordController {
                 .user(user)
                 .build();
 
-        emailService.sendSimpleMessage(mailBody);
-        forgotPasswordRepository.save(fp);
-
-        return ResponseEntity.ok("OTP sent to your email for verification!");
+        try {
+            emailService.sendSimpleMessage(mailBody);
+            forgotPasswordRepository.save(fp);
+            return ResponseEntity.ok("OTP sent to your email for verification!");
+        } catch (Exception e) {
+            forgotPasswordRepository.deleteByUser(user); // Clean up on failure
+            throw e;
+        }
     }
 
     @PostMapping("/verifyOtp/{otp}/{email}")
