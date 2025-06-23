@@ -1,11 +1,5 @@
+// src/main/java/com/example/expensetracker/service/ExpenseService.java
 package com.example.expensetracker.service;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Entity.User;
@@ -16,62 +10,51 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import jakarta.transaction.Transactional;
 
-@Service
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Component
 public class ExpenseService {
 
     @Autowired
-    ExpenseRepository expenseRepository;
+    private ExpenseRepository expenseRepository;
 
     @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    UserService userService;
+    private UserRepository userRepository;
 
     public Expense addExpense(ExpenseDto expenseDto) {
         String username = getCurrentUsername();
-        User myUser = userRepository.findByUsername(username);
-        if (myUser == null) throw new UsernameNotFoundException("User not found with username: " + username);
+        User user = userRepository.findByUsername(username);
+        if (user == null) throw new UsernameNotFoundException("User not found: " + username);
 
         Expense expense = new Expense();
         expense.setCategory(expenseDto.getCategory());
         expense.setAmount(expenseDto.calculateTotal());
         expense.setComments(expenseDto.getComments());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
-        expense.setImagePath(expenseDto.getImagePath()); // Set image path if provided
+        expense.setImagePath(expenseDto.getImagePath());
         expense.setCreatedAt(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
-        expense.setUser(myUser);
-
-        try {
-            expenseRepository.save(expense);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return expense;
-    }
-
-    private String getCurrentUsername() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails) {
-            return ((UserDetails) principal).getUsername();
-        }
-        return null;
+        expense.setUser(user);
+        return expenseRepository.save(expense);
     }
 
     public List<Expense> getAllExpenses() {
-        User myUser = userRepository.findByUsername(getCurrentUsername());
-        return expenseRepository.findAllByUser(myUser);
+        User user = userRepository.findByUsername(getCurrentUsername());
+        return expenseRepository.findAllByUser(user);
     }
 
     public double getTotalExpenseAmount() {
-        String username = getCurrentUsername();
-        User myUser = userRepository.findByUsername(username);
-        return myUser.getExpenses()
+        User user = userRepository.findByUsername(getCurrentUsername());
+        return expenseRepository.findAllByUser(user)
                 .stream()
                 .mapToDouble(Expense::getAmount)
                 .sum();
@@ -79,35 +62,38 @@ public class ExpenseService {
 
     @Transactional
     public Expense updateExpense(Long id, ExpenseDto expenseDto) {
-        Expense existing = expenseRepository.findById(id).orElseThrow();
-        existing.setCategory(expenseDto.getCategory());
-        existing.setAmount(expenseDto.calculateTotal());
-        existing.setComments(expenseDto.getComments());
-        existing.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
-        existing.setImagePath(expenseDto.getImagePath()); // Update image path if provided
-        existing.setUpdatedAt(LocalDateTime.now());
-        return expenseRepository.save(existing);
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        expense.setCategory(expenseDto.getCategory());
+        expense.setAmount(expenseDto.calculateTotal());
+        expense.setComments(expenseDto.getComments());
+        expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
+        expense.setImagePath(expenseDto.getImagePath());
+        expense.setUpdatedAt(LocalDateTime.now());
+        return expenseRepository.save(expense);
     }
 
     public Map<String, Double> getExpenseDistributionByCategory() {
-        String username = getCurrentUsername();
-        User myUser = userRepository.findByUsername(username);
-        if (myUser == null) throw new UsernameNotFoundException("User not found with username: " + username);
-
+        User user = userRepository.findByUsername(getCurrentUsername());
         Map<String, Double> distribution = new HashMap<>();
-        myUser.getExpenses().forEach(expense -> {
-            distribution.merge(expense.getCategory(), expense.getAmount(), Double::sum);
-        });
-
+        expenseRepository.findAllByUser(user).forEach(expense ->
+                distribution.merge(expense.getCategory(), expense.getAmount(), Double::sum));
         return distribution;
     }
 
-    // New method for recent transactions
     public List<Expense> getRecentTransactions(int limit) {
-        User myUser = userRepository.findByUsername(getCurrentUsername());
-        return expenseRepository.findAllByUser(myUser).stream()
+        User user = userRepository.findByUsername(getCurrentUsername());
+        return expenseRepository.findAllByUser(user).stream()
                 .sorted((e1, e2) -> e2.getCreatedAt().compareTo(e1.getCreatedAt()))
                 .limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    private String getCurrentUsername() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        throw new IllegalStateException("User not authenticated");
     }
 }

@@ -1,6 +1,5 @@
 package com.example.expensetracker.dto;
 
-import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,8 +15,8 @@ public class ExpenseDto {
     private Integer quantity;
     private Double amountPerUnit;
     private String comments;
-    private LocalDate dateOfTransaction; // New field for date
-    private String imagePath; // New field for image path or URL
+    private LocalDate dateOfTransaction;
+    private String imagePath;
 
     public Double calculateTotal() {
         if (quantity != null && amountPerUnit != null) {

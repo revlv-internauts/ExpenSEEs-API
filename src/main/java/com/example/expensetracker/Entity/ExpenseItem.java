@@ -1,5 +1,6 @@
 package com.example.expensetracker.Entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,5 +28,6 @@ public class ExpenseItem {
 
     @ManyToOne
     @JoinColumn(name = "budget_id")
+    @JsonBackReference
     private SubmittedBudget budget;
 }

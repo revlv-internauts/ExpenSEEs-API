@@ -1,14 +1,5 @@
 package com.example.expensetracker.controller;
 
-import java.util.Comparator;
-import java.util.List;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.dto.ExpenseDto;
@@ -18,6 +9,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -30,23 +30,24 @@ public class ExpenseController {
     private ExpenseService expenseService;
 
     @PostMapping
-    public Expense addExpense(@RequestBody ExpenseDto expenseDto) {
-        return expenseService.addExpense(expenseDto);
+    public ResponseEntity<Expense> addExpense(@RequestBody ExpenseDto expenseDto) {
+        return ResponseEntity.ok(expenseService.addExpense(expenseDto));
     }
 
     @GetMapping
-    public List<Expense> getAllExpenses() {
-        return expenseService.getAllExpenses();
+    public ResponseEntity<List<Expense>> getAllExpenses() {
+        return ResponseEntity.ok(expenseService.getAllExpenses());
     }
 
     @PutMapping("/{id}")
-    public Expense updateExpense(@PathVariable Long id, @RequestBody ExpenseDto expenseDto) {
-        return expenseService.updateExpense(id, expenseDto);
+    public ResponseEntity<Expense> updateExpense(@PathVariable Long id, @RequestBody ExpenseDto expenseDto) {
+        return ResponseEntity.ok(expenseService.updateExpense(id, expenseDto));
     }
 
     @DeleteMapping("/{id}")
-    public void deleteExpense(@PathVariable Long id) {
+    public ResponseEntity<String> deleteExpense(@PathVariable Long id) {
         expenseRepository.deleteById(id);
+        return ResponseEntity.ok("Expense deleted successfully");
     }
 
     @DeleteMapping
@@ -56,26 +57,26 @@ public class ExpenseController {
     }
 
     @GetMapping("/total-amount")
-    public Double getTotalExpenseAmount() {
-        return expenseService.getTotalExpenseAmount();
+    public ResponseEntity<Double> getTotalExpenseAmount() {
+        return ResponseEntity.ok(expenseService.getTotalExpenseAmount());
     }
 
     @GetMapping("/distribution")
-    public Map<String, Double> getExpenseDistribution() {
-        return expenseService.getExpenseDistributionByCategory();
+    public ResponseEntity<Map<String, Double>> getExpenseDistribution() {
+        return ResponseEntity.ok(expenseService.getExpenseDistributionByCategory());
     }
 
     @GetMapping("/top")
-    public List<Expense> getTopExpenses() {
+    public ResponseEntity<List<Expense>> getTopExpenses() {
         List<Expense> expenses = expenseService.getAllExpenses();
-        return expenses.stream()
+        return ResponseEntity.ok(expenses.stream()
                 .sorted(Comparator.comparing(Expense::getAmount).reversed())
                 .limit(5)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     @PostMapping("/upload-image/{expenseId}")
-    public String uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
         try {
             String uploadDir = "uploads/";
             Path uploadPath = Paths.get(uploadDir);
@@ -87,19 +88,23 @@ public class ExpenseController {
             Path filePath = uploadPath.resolve(fileName);
             Files.write(filePath, file.getBytes());
 
-            Expense expense = expenseRepository.findById(expenseId).orElseThrow();
+            Expense expense = expenseRepository.findById(expenseId)
+                    .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
             expense.setImagePath(uploadDir + fileName);
             expenseRepository.save(expense);
 
-            return "Image uploaded successfully: " + uploadDir + fileName;
+            return ResponseEntity.ok("Image uploaded successfully: " + uploadDir + fileName);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to upload image", e);
+            return new ResponseEntity<>("Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @GetMapping("/image/{filename}")
     public ResponseEntity<byte[]> getImage(@PathVariable String filename) throws IOException {
         Path filePath = Paths.get("uploads/" + filename);
+        if (!Files.exists(filePath)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
         byte[] imageBytes = Files.readAllBytes(filePath);
         return ResponseEntity.ok()
                 .header("Content-Type", "image/jpeg")
@@ -107,7 +112,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/recent")
-    public List<Expense> getRecentTransactions(@RequestParam(defaultValue = "5") int limit) {
-        return expenseService.getRecentTransactions(limit);
+    public ResponseEntity<List<Expense>> getRecentTransactions(@RequestParam(defaultValue = "5") int limit) {
+        return ResponseEntity.ok(expenseService.getRecentTransactions(limit));
     }
 }

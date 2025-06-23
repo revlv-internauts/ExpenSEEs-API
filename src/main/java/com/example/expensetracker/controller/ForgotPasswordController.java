@@ -1,8 +1,5 @@
 package com.example.expensetracker.controller;
 
-import java.util.*;
-import java.time.Instant;
-
 import com.example.expensetracker.Entity.ForgotPassword;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.ForgotPasswordRepository;
@@ -17,6 +14,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/forgotPassword")
@@ -41,7 +43,6 @@ public class ForgotPasswordController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email: " + email));
 
-        // Delete any existing ForgotPassword records for this user
         forgotPasswordRepository.deleteByUser(user);
 
         int otp = otpGenerator();
@@ -53,7 +54,7 @@ public class ForgotPasswordController {
 
         ForgotPassword fp = ForgotPassword.builder()
                 .otp(otp)
-                .expirationTime(new Date(System.currentTimeMillis() + 20 * 60 * 1000)) // 20 minutes
+                .expirationTime(new Date(System.currentTimeMillis() + 20 * 60 * 1000))
                 .user(user)
                 .build();
 
@@ -62,8 +63,8 @@ public class ForgotPasswordController {
             forgotPasswordRepository.save(fp);
             return ResponseEntity.ok("OTP sent to your email for verification!");
         } catch (Exception e) {
-            forgotPasswordRepository.deleteByUser(user); // Clean up on failure
-            throw e;
+            forgotPasswordRepository.deleteByUser(user);
+            return new ResponseEntity<>("Failed to send OTP", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -84,11 +85,11 @@ public class ForgotPasswordController {
                     return new RuntimeException();
                 });
 
-        if (fp.getExpirationTime().before(Date.from(Instant.now()))) {
+        if (fp.getExpirationTime().before(new Date())) {
             forgotPasswordRepository.deleteById(fp.getFpid());
             response.put("status", "error");
             response.put("message", "OTP has expired. Please request a new one.");
-            return new ResponseEntity<>(response, HttpStatus.EXPECTATION_FAILED);
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
         response.put("status", "success");
@@ -98,22 +99,22 @@ public class ForgotPasswordController {
 
     @PostMapping("/changePassword/{email}")
     @Transactional
-    public ResponseEntity<String> changePasswordHandlerForgot(@RequestBody ChangePassword changePassword,
-                                                              @PathVariable String email,
-                                                              @RequestParam("otp") Integer otp) {
+    public ResponseEntity<String> changePassword(@RequestBody ChangePassword changePassword,
+                                                 @PathVariable String email,
+                                                 @RequestParam("otp") Integer otp) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email: " + email));
 
         ForgotPassword fp = forgotPasswordRepository.findByOtpAndUser(otp, user)
                 .orElseThrow(() -> new RuntimeException("Invalid OTP for email: " + email));
 
-        if (fp.getExpirationTime().before(Date.from(Instant.now()))) {
+        if (fp.getExpirationTime().before(new Date())) {
             forgotPasswordRepository.deleteById(fp.getFpid());
-            return new ResponseEntity<>("OTP has expired. Please request a new one.", HttpStatus.EXPECTATION_FAILED);
+            return new ResponseEntity<>("OTP has expired. Please request a new one.", HttpStatus.BAD_REQUEST);
         }
 
-        if (!Objects.equals(changePassword.password(), changePassword.repeatPassword())) {
-            return new ResponseEntity<>("Passwords do not match. Please try again.", HttpStatus.BAD_REQUEST);
+        if (!changePassword.password().equals(changePassword.repeatPassword())) {
+            return new ResponseEntity<>("Passwords do not match.", HttpStatus.BAD_REQUEST);
         }
 
         String encodedPassword = passwordEncoder.encode(changePassword.password());
@@ -121,20 +122,6 @@ public class ForgotPasswordController {
         forgotPasswordRepository.deleteById(fp.getFpid());
 
         return ResponseEntity.ok("Password changed successfully!");
-    }
-
-    @PostMapping("/resetPassword/{email}")
-    @Transactional
-    public ResponseEntity<String> changePasswordHandler(@RequestBody ChangePassword changePassword,
-                                                        @PathVariable String email) {
-        if (!Objects.equals(changePassword.password(), changePassword.repeatPassword())) {
-            return new ResponseEntity<>("Please enter the password again!", HttpStatus.EXPECTATION_FAILED);
-        }
-
-        String encodedPassword = passwordEncoder.encode(changePassword.password());
-        userRepository.updatePassword(email, encodedPassword);
-
-        return ResponseEntity.ok("Password has been changed!");
     }
 
     private Integer otpGenerator() {

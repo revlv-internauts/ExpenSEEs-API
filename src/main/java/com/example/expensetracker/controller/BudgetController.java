@@ -3,7 +3,9 @@ package com.example.expensetracker.controller;
 import com.example.expensetracker.Entity.SubmittedBudget;
 import com.example.expensetracker.service.BudgetService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,9 +28,17 @@ public class BudgetController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody SubmittedBudget.Status status) {
-        budgetService.updateBudgetStatus(id, status);
-        return ResponseEntity.ok("Status updated successfully");
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String status) {
+        System.out.println("Received status: " + status); // Temporary debug
+        try {
+            SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
+            budgetService.updateBudgetStatus(id, enumStatus);
+            return ResponseEntity.ok("Status updated successfully");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid status exception: " + e.getMessage()); // Temporary debug
+            return new ResponseEntity<>("Invalid status", HttpStatus.BAD_REQUEST);
+        }
     }
 
     @PostMapping("/{budgetId}/expenses/{expenseId}")

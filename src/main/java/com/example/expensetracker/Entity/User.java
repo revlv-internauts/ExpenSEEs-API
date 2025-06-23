@@ -1,10 +1,12 @@
 package com.example.expensetracker.Entity;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Entity
 @Data
@@ -22,20 +24,10 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
     private String email;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Expense> expenses;
-
-    @Column(name = "reset_token")
-    private String resetToken;
-
-    @Column(name = "reset_expires_at")
-    private java.time.LocalDateTime resetExpiresAt;
-
-    public User(String username, String password) {
-        this.username = username;
-        this.password = password;
-    }
 }

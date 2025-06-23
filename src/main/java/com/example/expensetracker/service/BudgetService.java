@@ -12,9 +12,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
 import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
+
 import java.util.List;
 
 @Service
@@ -31,35 +30,41 @@ public class BudgetService {
 
     public SubmittedBudget createBudget(SubmittedBudget budget) {
         String username = getCurrentUsername();
-        User myUser = userRepository.findByUsername(username);
-        if (myUser == null) throw new UsernameNotFoundException("User not found with username: " + username);
+        User user = userRepository.findByUsername(username);
+        if (user == null) throw new UsernameNotFoundException("User not found: " + username);
 
-        budget.setUser(myUser);
-        budget.setTotal(budget.getExpenses().stream().mapToDouble(item -> item.getQuantity() * item.getAmountPerUnit()).sum());
+        budget.setUser(user);
+        budget.setTotal(budget.getExpenses().stream()
+                .mapToDouble(item -> item.getQuantity() * item.getAmountPerUnit())
+                .sum());
         budget.setStatus(SubmittedBudget.Status.PENDING);
-        budget.setExpenses(budget.getExpenses().stream().peek(item -> item.setBudget(budget)).toList());
+        budget.setExpenses(budget.getExpenses().stream()
+                .peek(item -> item.setBudget(budget))
+                .toList());
         return budgetRepository.save(budget);
     }
 
     public List<SubmittedBudget> getAllBudgets() {
-        User myUser = userRepository.findByUsername(getCurrentUsername());
+        User user = userRepository.findByUsername(getCurrentUsername());
         return budgetRepository.findAll().stream()
-                .filter(budget -> budget.getUser().getId().equals(myUser.getId()))
+                .filter(budget -> budget.getUser().getId().equals(user.getId()))
                 .toList();
     }
 
     @Transactional
     public void updateBudgetStatus(Long id, SubmittedBudget.Status status) {
-        SubmittedBudget budget = budgetRepository.findById(id).orElseThrow();
+        SubmittedBudget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Budget not found"));
         budget.setStatus(status);
         budgetRepository.save(budget);
     }
 
     @Transactional
     public void associateExpenseWithBudget(Long budgetId, Long expenseId) {
-        SubmittedBudget budget = budgetRepository.findById(budgetId).orElseThrow();
-        Expense expense = expenseRepository.findById(expenseId).orElseThrow();
-        // Logic to associate expense with a budget item (simplified)
+        SubmittedBudget budget = budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new IllegalArgumentException("Budget not found"));
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
         ExpenseItem item = new ExpenseItem();
         item.setCategory(expense.getCategory());
         item.setAmountPerUnit(expense.getAmount());
@@ -75,6 +80,6 @@ public class BudgetService {
         if (principal instanceof UserDetails) {
             return ((UserDetails) principal).getUsername();
         }
-        return null;
+        throw new IllegalStateException("User not authenticated");
     }
 }

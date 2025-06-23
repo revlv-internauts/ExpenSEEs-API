@@ -26,16 +26,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/forgotPassword/verifyMail/**", "/forgotPassword/verifyOtp/**", "/forgotPassword/changePassword/**").permitAll()
-                        .requestMatchers("/forgotPassword/verifyOtp/**").permitAll() // Already permitted, kept for clarity
-                        .requestMatchers("/api/user/resetPassword").authenticated() // Requires login
-                        .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/expenses/**", "/api/funds/**", "/api/reports/**").authenticated()
+                        .requestMatchers("/api/auth/sign-in", "/forgotPassword/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/funds/**", "/api/reports/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions().disable())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

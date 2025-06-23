@@ -14,7 +14,6 @@ import java.util.Date;
 @Getter
 @Builder
 public class ForgotPassword {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer fpid;

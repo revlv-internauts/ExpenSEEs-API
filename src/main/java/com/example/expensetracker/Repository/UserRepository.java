@@ -1,18 +1,20 @@
 package com.example.expensetracker.Repository;
 
+import com.example.expensetracker.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import com.example.expensetracker.Entity.User;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     User findByUsername(String username);
-    java.util.Optional<User> findByEmail(String email);
+    Optional<User> findByEmail(String email);
+    Optional<User> findByUsernameOrEmail(String username, String email);
 
     @Modifying
     @Query("UPDATE User u SET u.password = ?2 WHERE u.email = ?1")
-    void updatePassword(String email, String encodedPassword);
+    void updatePassword(String email, String password);
 }
