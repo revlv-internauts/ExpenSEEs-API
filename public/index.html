@@ -3,861 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Expense Tracker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-            height: 100vh;
-            overflow-x: hidden;
-        }
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 10px;
-        }
-        header {
-            background-color: #2c3e50;
-            color: white;
-            text-align: center;
-            padding: 10px 0;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-        }
-        nav {
-            display: flex;
-            justify-content: space-around;
-            background-color: #34495e;
-            padding: 10px 0;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            z-index: 1000;
-        }
-        nav button {
-            flex: 1;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 16px;
-            padding: 5px;
-            cursor: pointer;
-        }
-        nav button.active { background-color: #3498db; }
-        section {
-            margin-top: 60px;
-            margin-bottom: 60px;
-            display: none;
-            padding: 10px;
-        }
-        section.active { display: block; }
-        .form-group {
-            margin-bottom: 15px;
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select, button {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button.create { background-color: #28a745; color: white; border: none; cursor: pointer; }
-        button.read { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button.update { background-color: #ffc107; color: black; border: none; cursor: pointer; }
-        button.delete { background-color: #dc3545; color: white; border: none; cursor: pointer; }
-        button:hover { opacity: 0.9; }
-        .list-item {
-            background-color: white;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .error { color: red; font-size: 14px; margin-top: 5px; }
-        #imagePreview { max-width: 100%; height: auto; margin-top: 10px; }
-        .loading { display: none; text-align: center; padding: 10px; }
-        .loading.active { display: block; }
-    </style>
+    <meta name="description" content="ExpenSEEs - The Ultimate Expense Tracker">
+    <title>ExpenSEEs</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<header>
-    <h1>Expense Tracker</h1>
-</header>
+<div id="app" class="app-container">
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+        <div class="login-content">
+            <img src="path/to/your/logo.png" alt="ExpenSEEs Logo" class="logo" onerror="this.src='https://via.placeholder.com/120?text=ExpenSEEs'">
+            <form id="login-form" class="login-form">
+                <input type="text" id="login-email" name="usernameOrEmail" placeholder="Email or Username" class="input-field">
+                <input type="password" id="login-password" name="password" placeholder="Password" class="input-field">
+                <button type="submit" id="login-btn" class="btn btn-primary">Login</button>
+                <a href="#forgot-password" id="forgot-password-btn" class="btn btn-secondary">Forgot Password?</a>
+                <p id="login-error" class="error"></p>
+            </form>
+            <input type="hidden" id="jwt-token">
+        </div>
+    </div>
 
-<div class="container">
-    <div id="loading" class="loading">Loading...</div>
+    <!-- Forgot Password Screen -->
+    <div id="forgot-password-screen" class="screen">
+        <div class="login-content">
+            <h2 class="forgot-title">Reset Password</h2>
+            <form id="forgot-form" class="login-form">
+                <input type="email" id="forgot-email" placeholder="Enter Email" class="input-field">
+                <button type="submit" id="send-otp-btn" class="btn btn-primary">Send OTP</button>
+                <input type="text" id="otp-input" placeholder="Enter OTP" class="input-field" style="display: none;">
+                <button type="button" id="verify-otp-btn" class="btn btn-primary" style="display: none;">Verify OTP</button>
+                <input type="password" id="new-password" placeholder="New Password" class="input-field" style="display: none;">
+                <input type="password" id="confirm-password" placeholder="Confirm Password" class="input-field" style="display: none;">
+                <button type="button" id="reset-password-btn" class="btn btn-primary" style="display: none;">Reset Password</button>
+                <a href="#login" class="btn btn-secondary back-btn">Back to Login</a>
+                <p id="forgot-error" class="error"></p>
+            </form>
+        </div>
+    </div>
 
-    <!-- Login Section -->
-    <section id="loginSection" class="active">
-        <h2>Login</h2>
-        <div class="form-group">
-            <label for="usernameOrEmail">Username or Email:</label>
-            <input type="text" id="usernameOrEmail" required>
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="screen">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="profile">
+                    <div class="profile-avatar"></div>
+                    <div>
+                        <p id="profile-name" class="profile-name">User Profile</p>
+                        <p id="profile-email" class="profile-email">user@example.com</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button id="expenses-btn" class="nav-btn">Expenses</button>
+                <button id="budget-btn" class="nav-btn">Budget</button>
+                <button id="reset-password-btn-sidebar" class="nav-btn">Reset Password</button>
+                <button id="logout-btn" class="nav-btn btn-danger">Logout</button>
+            </nav>
         </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" required>
+        <div class="main-content">
+            <header class="dashboard-header">
+                <button id="sidebar-toggle" class="btn btn-secondary">☰</button>
+                <h1 class="dashboard-title">ExpenSEEs Dashboard</h1>
+                <button id="add-expense-btn" class="btn btn-primary">Add Expense</button>
+            </header>
+            <div id="dashboard-content" class="dashboard-content">
+                <div id="total-expenses" class="card">
+                    <h2>Total Expenses</h2>
+                    <p id="total-amount" class="card-value">Php 0.00</p>
+                </div>
+                <div id="top-expenses" class="card">
+                    <h2>Top 5 Expenses</h2>
+                    <ul id="top-expenses-list" class="card-list"></ul>
+                </div>
+                <div id="expense-distribution" class="card">
+                    <h2>Expense Distribution</h2>
+                    <canvas id="expense-chart"></canvas>
+                </div>
+                <div id="expense-list" class="card">
+                    <h2>Recent Expenses</h2>
+                    <ul id="expense-list-items" class="card-list"></ul>
+                </div>
+            </div>
         </div>
-        <button class="create" onclick="login()">Login</button>
-        <button onclick="showSection('forgotPasswordSection')">Forgot Password?</button>
-        <p id="loginError" class="error"></p>
-    </section>
+    </div>
 
-    <!-- Forgot Password Section -->
-    <section id="forgotPasswordSection">
-        <h2>Forgot Password</h2>
-        <div class="form-group">
-            <label for="forgotEmail">Email:</label>
-            <input type="email" id="forgotEmail" required>
+    <!-- Add/Edit Expense Modal -->
+    <div id="add-expense-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="expense-modal-title">Add New Expense</h2>
+            <form id="add-expense-form">
+                <input type="hidden" id="expense-id">
+                <select id="expense-category" class="input-field" required>
+                    <option value="" disabled selected>Select Category</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Food">Food</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Gas">Gas</option>
+                    <option value="Office Supplies">Office Supplies</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Parking">Parking</option>
+                    <option value="Electronic Supplies">Electronic Supplies</option>
+                    <option value="Other Expenses">Other Expenses</option>
+                </select>
+                <input type="number" id="expense-amount" placeholder="Amount" step="0.01" class="input-field no-arrows" required>
+                <input type="date" id="expense-date" class="input-field" required>
+                <textarea id="expense-remarks" placeholder="Remarks" class="input-field"></textarea>
+                <div class="upload-section">
+                    <input type="file" id="receipt-photo" accept="image/*" capture="camera" class="input-field" style="display: none;">
+                    <input type="file" id="receipt-gallery" accept="image/*" class="input-field" style="display: none;">
+                    <button type="button" id="take-photo-btn" class="btn btn-secondary">Take Photo</button>
+                    <button type="button" id="pick-gallery-btn" class="btn btn-secondary">Pick from Gallery</button>
+                    <div id="image-preview" class="image-preview"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" id="close-modal-btn" class="btn btn-secondary">Cancel</button>
+            </form>
         </div>
-        <button class="create" onclick="verifyEmail()">Request OTP</button>
-        <div class="form-group" id="otpSection" style="display: none;">
-            <label for="otp">OTP:</label>
-            <input type="number" id="otp" required>
-        </div>
-        <div class="form-group" id="newPasswordSection" style="display: none;">
-            <label for="newPassword">New Password:</label>
-            <input type="password" id="newPassword" required>
-        </div>
-        <div class="form-group" id="repeatPasswordSection" style="display: none;">
-            <label for="repeatPassword">Repeat Password:</label>
-            <input type="password" id="repeatPassword" required>
-        </div>
-        <button id="verifyOtpBtn" class="create" style="display: none;" onclick="verifyOtp()">Verify OTP</button>
-        <button id="changePasswordBtn" class="update" style="display: none;" onclick="changePassword()">Change Password</button>
-        <p id="forgotError" class="error"></p>
-    </section>
+    </div>
 
-    <!-- Budget CRUD Section -->
-    <section id="budgetSection">
-        <h2>Budget Management</h2>
-        <!-- Create Budget -->
-        <div class="form-group">
-            <h3>Create Budget</h3>
-            <label for="budgetName">Name:</label>
-            <input type="text" id="budgetName" required>
-            <label for="budgetTotal">Total:</label>
-            <input type="number" id="budgetTotal" step="0.01" required>
-            <label for="expenseCategory">Expense Category:</label>
-            <input type="text" id="expenseCategory" required>
-            <label for="expenseQuantity">Quantity:</label>
-            <input type="number" id="expenseQuantity" required>
-            <label for="expenseAmount">Amount Per Unit:</label>
-            <input type="number" id="expenseAmount" step="0.01" required>
-            <label for="expenseRemarks">Remarks:</label>
-            <input type="text" id="expenseRemarks">
-            <button class="create" onclick="createBudget()">Create Budget</button>
-            <button class="create" onclick="requestFund()">Request Fund</button>
-            <p id="budgetError" class="error"></p>
+    <!-- Expense Details Modal -->
+    <div id="expense-details-modal" class="modal">
+        <div class="modal-content">
+            <h2>Expense Details</h2>
+            <div id="expense-details-content">
+                <p><strong>Category:</strong> <span id="detail-category"></span></p>
+                <p><strong>Amount:</strong> <span id="detail-amount"></span></p>
+                <p><strong>Date:</strong> <span id="detail-date"></span></p>
+                <p><strong>Remarks:</strong> <span id="detail-remarks"></span></p>
+                <p><strong>Receipt:</strong> <div id="detail-image" class="image-preview"></div></p>
+            </div>
+            <button id="edit-expense-btn" class="btn btn-primary">Edit</button>
+            <button id="delete-expense-btn" class="btn btn-danger">Delete</button>
+            <button id="close-details-modal-btn" class="btn btn-secondary">Close</button>
         </div>
-        <!-- Read Budgets -->
-        <div class="form-group">
-            <h3>Budgets List</h3>
-            <button class="read" onclick="fetchBudgets()">Refresh Budgets</button>
-            <div id="budgetsList"></div>
-        </div>
-    </section>
+    </div>
 
-    <!-- Expense CRUD Section -->
-    <section id="expenseSection">
-        <h2>Expense Management</h2>
-        <!-- Create/Update Expense -->
-        <div id="expenseForm" class="form-group">
-            <h3>Create/Update Expense</h3>
-            <label for="expenseCategoryInput">Category:</label>
-            <input type="text" id="expenseCategoryInput" required>
-            <label for="expenseAmountInput">Amount:</label>
-            <input type="number" id="expenseAmountInput" step="0.01" required>
-            <label for="expenseComments">Comments:</label>
-            <input type="text" id="expenseComments">
-            <label for="budgetSelect">Associate with Budget:</label>
-            <select id="budgetSelect">
-                <option value="">None</option>
-            </select>
-            <label for="expenseImage">Upload Image:</label>
-            <input type="file" id="expenseImage" accept="image/*">
-            <img id="imagePreview" style="display: none;">
-            <button class="create" onclick="addExpense()">Create Expense</button>
-            <button class="update" onclick="updateExpense()">Update Expense</button>
-            <button class="delete" onclick="deleteExpense()">Delete Expense</button>
-            <p id="expenseError" class="error"></p>
+    <!-- Reset Password Modal -->
+    <div id="reset-password-modal" class="modal">
+        <div class="modal-content">
+            <h2>Reset Password</h2>
+            <form id="reset-password-form">
+                <input type="password" id="reset-new-password" placeholder="New Password" class="input-field" required>
+                <input type="password" id="reset-confirm-password" placeholder="Confirm Password" class="input-field" required>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="button" id="close-reset-modal-btn" class="btn btn-secondary">Cancel</button>
+                <p id="reset-error" class="error"></p>
+            </form>
         </div>
-        <!-- Read Expenses -->
-        <div class="form-group">
-            <h3>Expenses List</h3>
-            <button class="read" onclick="fetchExpenses()">Refresh Expenses</button>
-            <div id="expenseList"></div>
-            <h4>Total Expenses: $<span id="totalExpenses"></span></h4>
-            <h4>Expense Distribution:</h4>
-            <div id="expenseDistribution"></div>
-            <h4>Top 5 Expenses:</h4>
-            <div id="topExpenses"></div>
-            <h4>Recent Transactions:</h4>
-            <div id="recentTransactions"></div>
-        </div>
-    </section>
-
-    <!-- Admin Section -->
-    <section id="adminSection">
-        <h2>Admin Dashboard</h2>
-        <!-- Create User -->
-        <div id="adminUsersForm" class="form-group">
-            <h3>Create User</h3>
-            <label for="adminUsername">Username:</label>
-            <input type="text" id="adminUsername" required>
-            <label for="adminEmail">Email:</label>
-            <input type="email" id="adminEmail" required>
-            <label for="adminPassword">Password:</label>
-            <input type="password" id="adminPassword" required>
-            <button class="create" onclick="createUser()">Create User</button>
-            <p id="adminError" class="error"></p>
-        </div>
-        <!-- Manage Budgets -->
-        <div class="form-group">
-            <h3>Manage Budgets</h3>
-            <button class="read" onclick="fetchBudgets()">Refresh Budgets</button>
-            <div id="budgetsList"></div>
-        </div>
-        <!-- Liquidation Report -->
-        <div class="form-group">
-            <h3>Liquidation Report</h3>
-            <button class="read" onclick="fetchLiquidationReport()">Refresh Report</button>
-            <div id="liquidationReport"></div>
-        </div>
-    </section>
+    </div>
 </div>
-
-<nav>
-    <button onclick="logout()" id="loginBtn">Logout</button>
-    <button onclick="showSection('budgetSection')" id="budgetBtn">Budgets</button>
-    <button onclick="showSection('expenseSection')" id="expenseBtn">Expenses</button>
-    <button onclick="showSection('adminSection')" id="adminBtn">Admin</button>
-</nav>
-
-<script>
-    let token = localStorage.getItem('token');
-    const apiBaseUrl = 'http://localhost:8080/api';
-    let selectedExpenseId = null;
-    let budgets = [];
-
-    // Toggle loading state
-    function toggleLoading(show) {
-        document.getElementById('loading').classList.toggle('active', show);
-    }
-
-    // Show section and update nav
-    function showSection(sectionId) {
-        document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-        document.getElementById(sectionId).classList.add('active');
-        document.getElementById(sectionId.replace('Section', 'Btn')).classList.add('active');
-        document.getElementById('adminBtn').style.display = isAdmin() ? 'block' : 'none';
-        clearErrors();
-        if (sectionId === 'adminSection' && isAdmin()) {
-            fetchBudgets();
-            fetchLiquidationReport();
-        } else if (sectionId === 'expenseSection') {
-            fetchExpenses();
-            fetchBudgetsForDropdown();
-        } else if (sectionId === 'budgetSection') {
-            fetchBudgets();
-        }
-    }
-
-    // Clear all error messages
-    function clearErrors() {
-        document.querySelectorAll('.error').forEach(e => e.textContent = '');
-    }
-
-    // Check authentication and set initial section
-    function checkAuth() {
-        if (token) {
-            document.getElementById('loginSection').classList.remove('active');
-            showSection(isAdmin() ? 'adminSection' : 'budgetSection');
-        } else {
-            showSection('loginSection');
-            document.getElementById('adminBtn').style.display = 'none';
-        }
-    }
-
-    // Logout
-    function logout() {
-        token = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        selectedExpenseId = null;
-        checkAuth();
-    }
-
-    // Login (Create session)
-    async function login() {
-        const usernameOrEmail = document.getElementById('usernameOrEmail').value.trim();
-        const password = document.getElementById('password').value;
-        if (!usernameOrEmail || !password) {
-            document.getElementById('loginError').textContent = 'All fields are required';
-            return;
-        }
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/auth/sign-in`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usernameOrEmail, password })
-            });
-            if (!response.ok) throw new Error('Login failed');
-            const data = await response.json();
-            token = data.jwt;
-            localStorage.setItem('token', token);
-            localStorage.setItem('username', usernameOrEmail);
-            checkAuth();
-        } catch (error) {
-            document.getElementById('loginError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    // Check if user is admin
-    function isAdmin() {
-        return localStorage.getItem('username') === 'admin';
-    }
-
-    // Forgot Password
-    let forgotEmail = '';
-    async function verifyEmail() {
-        forgotEmail = document.getElementById('forgotEmail').value.trim();
-        if (!forgotEmail) {
-            document.getElementById('forgotError').textContent = 'Email is required';
-            return;
-        }
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/../forgotPassword/verifyMail/${forgotEmail}`, {
-                method: 'POST'
-            });
-            if (!response.ok) throw new Error('Failed to send OTP');
-            document.getElementById('otpSection').style.display = 'block';
-            document.getElementById('verifyOtpBtn').style.display = 'inline';
-            document.getElementById('forgotError').textContent = 'OTP sent to your email!';
-        } catch (error) {
-            document.getElementById('forgotError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function verifyOtp() {
-        const otp = document.getElementById('otp').value.trim();
-        if (!otp) {
-            document.getElementById('forgotError').textContent = 'OTP is required';
-            return;
-        }
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/../forgotPassword/verifyOtp/${otp}/${forgotEmail}`, {
-                method: 'POST'
-            });
-            if (!response.ok) throw new Error('Invalid OTP');
-            const data = await response.json();
-            if (data.status === 'success') {
-                document.getElementById('newPasswordSection').style.display = 'block';
-                document.getElementById('repeatPasswordSection').style.display = 'block';
-                document.getElementById('changePasswordBtn').style.display = 'inline';
-                document.getElementById('verifyOtpBtn').style.display = 'none';
-                document.getElementById('forgotError').textContent = 'OTP verified!';
-            } else {
-                throw new Error(data.message);
-            }
-        } catch (error) {
-            document.getElementById('forgotError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function changePassword() {
-        const password = document.getElementById('newPassword').value;
-        const repeatPassword = document.getElementById('repeatPassword').value;
-        const otp = document.getElementById('otp').value.trim();
-        if (!password || !repeatPassword || !otp) {
-            document.getElementById('forgotError').textContent = 'All fields are required';
-            return;
-        }
-        if (password !== repeatPassword) {
-            document.getElementById('forgotError').textContent = 'Passwords do not match';
-            return;
-        }
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/../forgotPassword/changePassword/${forgotEmail}?otp=${otp}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password, repeatPassword })
-            });
-            if (!response.ok) throw new Error('Failed to change password');
-            document.getElementById('forgotError').textContent = 'Password changed successfully!';
-            setTimeout(() => showSection('loginSection'), 2000);
-        } catch (error) {
-            document.getElementById('forgotError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    // Budget CRUD Operations
-    async function createBudget() {
-        const name = document.getElementById('budgetName').value.trim();
-        const total = parseFloat(document.getElementById('budgetTotal').value);
-        const category = document.getElementById('expenseCategory').value.trim();
-        const quantity = parseInt(document.getElementById('expenseQuantity').value);
-        const amount = parseFloat(document.getElementById('expenseAmount').value);
-        const remarks = document.getElementById('expenseRemarks').value.trim();
-        if (!name || isNaN(total) || !category || isNaN(quantity) || isNaN(amount)) {
-            document.getElementById('budgetError').textContent = 'All required fields must be filled';
-            return;
-        }
-        const budget = {
-            name,
-            total,
-            status: 'PENDING',
-            expenses: [{ category, quantity, amountPerUnit: amount, remarks }]
-        };
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/budgets`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(budget)
-            });
-            if (!response.ok) throw new Error('Failed to create budget');
-            document.getElementById('budgetName').value = '';
-            document.getElementById('budgetTotal').value = '';
-            document.getElementById('expenseCategory').value = '';
-            document.getElementById('expenseQuantity').value = '';
-            document.getElementById('expenseAmount').value = '';
-            document.getElementById('expenseRemarks').value = '';
-            document.getElementById('budgetError').textContent = 'Budget created!';
-            fetchBudgets();
-        } catch (error) {
-            document.getElementById('budgetError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function requestFund() {
-        const name = document.getElementById('budgetName').value.trim();
-        const total = parseFloat(document.getElementById('budgetTotal').value);
-        const category = document.getElementById('expenseCategory').value.trim();
-        const quantity = parseInt(document.getElementById('expenseQuantity').value);
-        const amount = parseFloat(document.getElementById('expenseAmount').value);
-        const remarks = document.getElementById('expenseRemarks').value.trim();
-        if (!name || isNaN(total) || !category || isNaN(quantity) || isNaN(amount)) {
-            document.getElementById('budgetError').textContent = 'All required fields must be filled';
-            return;
-        }
-        const budget = {
-            name,
-            total,
-            status: 'PENDING',
-            expenses: [{ category, quantity, amountPerUnit: amount, remarks }]
-        };
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/funds/request`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(budget)
-            });
-            if (!response.ok) throw new Error('Failed to request fund');
-            document.getElementById('budgetName').value = '';
-            document.getElementById('budgetTotal').value = '';
-            document.getElementById('expenseCategory').value = '';
-            document.getElementById('expenseQuantity').value = '';
-            document.getElementById('expenseAmount').value = '';
-            document.getElementById('expenseRemarks').value = '';
-            document.getElementById('budgetError').textContent = 'Fund requested!';
-        } catch (error) {
-            document.getElementById('budgetError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function fetchBudgets() {
-        if (!token) return;
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/budgets`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch budgets');
-            budgets = await response.json();
-            const list = document.getElementById('budgetsList');
-            list.innerHTML = '';
-            budgets.forEach(budget => {
-                const div = document.createElement('div');
-                div.className = 'list-item';
-                div.innerHTML = `
-                    <p>ID: ${budget.id}, Name: ${budget.name}, Total: $${budget.total}, Status: ${budget.status}</p>
-                    ${isAdmin() ? `
-                        <button class="create" onclick="updateStatus(${budget.id}, 'APPROVED')">Approve</button>
-                        <button class="delete" onclick="updateStatus(${budget.id}, 'DENIED')">Deny</button>
-                    ` : ''}
-                `;
-                list.appendChild(div);
-            });
-        } catch (error) {
-            const errorElement = document.getElementById(isAdmin() ? 'adminError' : 'budgetError');
-            errorElement.textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function updateStatus(id, status) {
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/budgets/${id}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'text/plain',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: status
-            });
-            if (!response.ok) throw new Error('Failed to update status');
-            document.getElementById('adminError').textContent = 'Status updated!';
-            fetchBudgets();
-        } catch (error) {
-            document.getElementById('adminError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    // Expense CRUD Operations
-    async function addExpense() {
-        const category = document.getElementById('expenseCategoryInput').value.trim();
-        const amount = parseFloat(document.getElementById('expenseAmountInput').value);
-        const comments = document.getElementById('expenseComments').value.trim();
-        const budgetId = document.getElementById('budgetSelect').value;
-        const imageInput = document.getElementById('expenseImage');
-        if (!category || isNaN(amount)) {
-            document.getElementById('expenseError').textContent = 'Category and amount are required';
-            return;
-        }
-        const expense = { category, amount, comments };
-        const formData = new FormData();
-        if (imageInput.files[0]) formData.append('file', imageInput.files[0]);
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(expense)
-            });
-            if (!response.ok) throw new Error('Failed to create expense');
-            const expenseData = await response.json();
-            if (imageInput.files.length > 0) {
-                await fetch(`${apiBaseUrl}/expenses/upload-image/${expenseData.id}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
-                });
-            }
-            if (budgetId) {
-                await fetch(`${apiBaseUrl}/budgets/${budgetId}/expenses/${expenseData.id}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            }
-            document.getElementById('expenseCategoryInput').value = '';
-            document.getElementById('expenseAmountInput').value = '';
-            document.getElementById('expenseComments').value = '';
-            document.getElementById('budgetSelect').value = '';
-            document.getElementById('expenseImage').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('expenseError').textContent = 'Expense created!';
-            fetchExpenses();
-        } catch (error) {
-            document.getElementById('expenseError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function updateExpense() {
-        if (!selectedExpenseId) {
-            document.getElementById('expenseError').textContent = 'Select an expense to update';
-            return;
-        }
-        const category = document.getElementById('expenseCategoryInput').value.trim();
-        const amount = parseFloat(document.getElementById('expenseAmountInput').value);
-        const comments = document.getElementById('expenseComments').value.trim();
-        if (!category || isNaN(amount)) {
-            document.getElementById('expenseError').textContent = 'Category and amount are required';
-            return;
-        }
-        const expense = { category, amount, comments };
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/${selectedExpenseId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(expense)
-            });
-            if (!response.ok) throw new Error('Failed to update expense');
-            document.getElementById('expenseCategoryInput').value = '';
-            document.getElementById('expenseAmountInput').value = '';
-            document.getElementById('expenseComments').value = '';
-            document.getElementById('budgetSelect').value = '';
-            document.getElementById('expenseImage').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            selectedExpenseId = null;
-            document.getElementById('expenseError').textContent = 'Expense updated!';
-            fetchExpenses();
-        } catch (error) {
-            document.getElementById('expenseError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function deleteExpense() {
-        if (!selectedExpenseId) {
-            document.getElementById('expenseError').textContent = 'Select an expense to delete';
-            return;
-        }
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/${selectedExpenseId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to delete expense');
-            document.getElementById('expenseCategoryInput').value = '';
-            document.getElementById('expenseAmountInput').value = '';
-            document.getElementById('expenseComments').value = '';
-            document.getElementById('budgetSelect').value = '';
-            document.getElementById('expenseImage').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            selectedExpenseId = null;
-            document.getElementById('expenseError').textContent = 'Expense deleted!';
-            fetchExpenses();
-        } catch (error) {
-            document.getElementById('expenseError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function fetchExpenses() {
-        if (!token) return;
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch expenses');
-            const expenses = await response.json();
-            const list = document.getElementById('expenseList');
-            list.innerHTML = '';
-            expenses.forEach(expense => {
-                const div = document.createElement('div');
-                div.className = 'list-item';
-                div.innerHTML = `
-                    <p>ID: ${expense.id}, Category: ${expense.category}, Amount: $${expense.amount}, Comments: ${expense.comments || 'N/A'}</p>
-                    <button class="update" onclick="selectExpense(${expense.id}, '${expense.category}', ${expense.amount}, '${expense.comments || ''}')">Select to Update</button>
-                    ${expense.imagePath ? '<img src="${apiBaseUrl}/expenses/image/' + expense.imagePath.split('/').pop() + '" width="100">' : ''}
-                `;
-                list.appendChild(div);
-            });
-            await fetchTotalExpenses();
-            await fetchExpenseDistribution();
-            await fetchTopExpenses();
-            await fetchRecentTransactions();
-        } catch (error) {
-            document.getElementById('expenseError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    function selectExpense(id, category, amount, comments) {
-        selectedExpenseId = id;
-        document.getElementById('expenseCategoryInput').value = category;
-        document.getElementById('expenseAmountInput').value = amount;
-        document.getElementById('expenseComments').value = comments;
-    }
-
-    async function fetchTotalExpenses() {
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/total-amount`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch total');
-            const total = await response.json();
-            document.getElementById('totalExpenses').textContent = total;
-        } catch (error) {
-            console.error('Error fetching total:', error);
-        }
-    }
-
-    async function fetchExpenseDistribution() {
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/distribution`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch distribution');
-            const distribution = await response.json();
-            const div = document.getElementById('expenseDistribution');
-            div.innerHTML = Object.entries(distribution).map(([cat, amt]) => `<p>${cat}: $${amt}</p>`).join('');
-        } catch (error) {
-            console.error('Error fetching distribution:', error);
-        }
-    }
-
-    async function fetchTopExpenses() {
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/top`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch top expenses');
-            const expenses = await response.json();
-            const div = document.getElementById('topExpenses');
-            div.innerHTML = expenses.map(e => `<p>${e.category}: $${e.amount}</p>`).join('');
-        } catch (error) {
-            console.error('Error fetching top expenses:', error);
-        }
-    }
-
-    async function fetchRecentTransactions() {
-        try {
-            const response = await fetch(`${apiBaseUrl}/expenses/recent?limit=5`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch recent transactions');
-            const transactions = await response.json();
-            const div = document.getElementById('recentTransactions');
-            div.innerHTML = transactions.map(t => `<p>${t.category}: $${t.amount} (${t.dateOfTransaction})</p>`).join('');
-        } catch (error) {
-            console.error('Error fetching recent transactions:', error);
-        }
-    }
-
-    async function fetchBudgetsForDropdown() {
-        try {
-            const response = await fetch(`${apiBaseUrl}/budgets`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch budgets');
-            budgets = await response.json();
-            const select = document.getElementById('budgetSelect');
-            select.innerHTML = '<option value="">None</option>';
-            budgets.forEach(budget => {
-                const option = document.createElement('option');
-                option.value = budget.id;
-                option.textContent = budget.name;
-                select.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Error fetching budgets:', error);
-        }
-    }
-
-    // Admin CRUD Operations
-    async function createUser() {
-        const username = document.getElementById('adminUsername').value.trim();
-        const email = document.getElementById('adminEmail').value.trim();
-        const password = document.getElementById('adminPassword').value;
-        if (!username || !email || !password) {
-            document.getElementById('adminError').textContent = 'All fields are required';
-            return;
-        }
-        const user = { username, email, password };
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/admin/users`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(user)
-            });
-            if (!response.ok) throw new Error('Failed to create user');
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminEmail').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminError').textContent = 'User created!';
-        } catch (error) {
-            document.getElementById('adminError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function fetchLiquidationReport() {
-        if (!token) return;
-        toggleLoading(true);
-        try {
-            const response = await fetch(`${apiBaseUrl}/reports/liquidation`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch report');
-            const report = await response.json();
-            const div = document.getElementById('liquidationReport');
-            div.innerHTML = `
-                <p>Total Expenses: $${report.totalExpenses}</p>
-                <p>Expenses: ${report.expenses.map(e => `${e.category}: $${e.amount}`).join(', ')}</p>
-                <p>Budgets: ${report.budgets.map(b => `${b.name}: $${b.total}`).join(', ')}</p>
-            `;
-        } catch (error) {
-            document.getElementById('adminError').textContent = error.message;
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    // Image Preview
-    document.getElementById('expenseImage').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreview').style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // Initial setup
-    checkAuth();
-</script>
+<script src="script.js"></script>
 </body>
 </html>

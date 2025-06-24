@@ -4,6 +4,7 @@ import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,16 @@ public class ExpenseController {
     @Autowired
     private ExpenseService expenseService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Expense> getExpense(@PathVariable Long id) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found with id: " + id));
+        return ResponseEntity.ok(expense);
+    }
+
     @PostMapping
     public ResponseEntity<Expense> addExpense(@RequestBody ExpenseDto expenseDto) {
         return ResponseEntity.ok(expenseService.addExpense(expenseDto));
@@ -41,11 +52,22 @@ public class ExpenseController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Expense> updateExpense(@PathVariable Long id, @RequestBody ExpenseDto expenseDto) {
-        return ResponseEntity.ok(expenseService.updateExpense(id, expenseDto));
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found with id: " + id));
+        expense.setCategory(expenseDto.getCategory());
+        expense.setAmount(expenseDto.calculateTotal());
+        expense.setComments(expenseDto.getComments());
+        expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : java.time.LocalDate.now());
+        expense.setImagePath(expenseDto.getImagePath());
+        expense.setUpdatedAt(java.time.LocalDateTime.now());
+        return ResponseEntity.ok(expenseRepository.save(expense));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteExpense(@PathVariable Long id) {
+        if (!expenseRepository.existsById(id)) {
+            return new ResponseEntity<>("Expense not found with id: " + id, HttpStatus.NOT_FOUND);
+        }
         expenseRepository.deleteById(id);
         return ResponseEntity.ok("Expense deleted successfully");
     }
@@ -75,27 +97,41 @@ public class ExpenseController {
                 .collect(Collectors.toList()));
     }
 
-    @PostMapping("/upload-image/{expenseId}")
-    public ResponseEntity<String> uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
+    @PostMapping("/upload-image")
+    public ResponseEntity<String> uploadExpenseWithImage(
+            @RequestPart("expense") String expenseJson,
+            @RequestPart("receiptImage") MultipartFile image) {
         try {
+            // Parse the JSON string into ExpenseDto
+            ExpenseDto expenseDto = objectMapper.readValue(expenseJson, ExpenseDto.class);
+
+            // Validate and process the expense
             String uploadDir = "uploads/";
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
             Path filePath = uploadPath.resolve(fileName);
-            Files.write(filePath, file.getBytes());
+            Files.write(filePath, image.getBytes());
 
-            Expense expense = expenseRepository.findById(expenseId)
-                    .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+            // Create and save the expense
+            Expense expense = new Expense();
+            expense.setCategory(expenseDto.getCategory());
+            expense.setAmount(expenseDto.calculateTotal());
+            expense.setComments(expenseDto.getComments());
+            expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : java.time.LocalDate.now());
             expense.setImagePath(uploadDir + fileName);
+            expense.setCreatedAt(java.time.LocalDateTime.now());
+            expense.setUpdatedAt(java.time.LocalDateTime.now());
+            expense.setUser(expenseService.getCurrentUser());
+
             expenseRepository.save(expense);
 
-            return ResponseEntity.ok("Image uploaded successfully: " + uploadDir + fileName);
+            return ResponseEntity.ok("Expense with image uploaded successfully: " + uploadDir + fileName);
         } catch (IOException e) {
-            return new ResponseEntity<>("Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Failed to upload image or process expense: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

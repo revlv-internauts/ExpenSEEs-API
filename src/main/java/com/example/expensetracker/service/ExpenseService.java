@@ -1,4 +1,3 @@
-// src/main/java/com/example/expensetracker/service/ExpenseService.java
 package com.example.expensetracker.service;
 
 import com.example.expensetracker.Entity.Expense;
@@ -87,6 +86,11 @@ public class ExpenseService {
                 .sorted((e1, e2) -> e2.getCreatedAt().compareTo(e1.getCreatedAt()))
                 .limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    public User getCurrentUser() {
+        String username = getCurrentUsername();
+        return userRepository.findByUsername(username);
     }
 
     private String getCurrentUsername() {
