@@ -88,11 +88,6 @@ public class ExpenseService {
                 .collect(Collectors.toList());
     }
 
-    public User getCurrentUser() {
-        String username = getCurrentUsername();
-        return userRepository.findByUsername(username);
-    }
-
     private String getCurrentUsername() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetails) {

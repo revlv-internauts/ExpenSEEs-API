@@ -36,3 +36,4 @@ public class Expense {
     private LocalDate dateOfTransaction;
     private String imagePath;
 }
+

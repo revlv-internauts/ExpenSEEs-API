@@ -30,13 +30,11 @@ public class BudgetController {
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String status) {
-        System.out.println("Received status: " + status); // Temporary debug
         try {
             SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
             budgetService.updateBudgetStatus(id, enumStatus);
             return ResponseEntity.ok("Status updated successfully");
         } catch (IllegalArgumentException e) {
-            System.out.println("Invalid status exception: " + e.getMessage()); // Temporary debug
             return new ResponseEntity<>("Invalid status", HttpStatus.BAD_REQUEST);
         }
     }

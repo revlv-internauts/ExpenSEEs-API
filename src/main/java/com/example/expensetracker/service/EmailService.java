@@ -1,4 +1,3 @@
-// src/main/java/com/example/expensetracker/service/EmailService.java
 package com.example.expensetracker.service;
 
 import com.example.expensetracker.dto.MailBody;

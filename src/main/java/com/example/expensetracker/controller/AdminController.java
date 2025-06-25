@@ -20,3 +20,4 @@ public class AdminController {
         return userService.createUser(user);
     }
 }
+
