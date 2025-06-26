@@ -51,6 +51,7 @@ public class AuthController {
         response.put("jwt", jwt);
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
+        response.put("user_id", user.getUserId()); // Added user_id to the response
         response.put("status", "success");
         return ResponseEntity.ok(response);
     }

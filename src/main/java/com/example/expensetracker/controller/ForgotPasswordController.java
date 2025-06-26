@@ -86,7 +86,7 @@ public class ForgotPasswordController {
                 });
 
         if (fp.getExpirationTime().before(new Date())) {
-            forgotPasswordRepository.deleteById(fp.getFpid());
+            forgotPasswordRepository.deleteById(fp.getForgotPasswordId());
             response.put("status", "error");
             response.put("message", "OTP has expired. Please request a new one.");
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
@@ -109,7 +109,7 @@ public class ForgotPasswordController {
                 .orElseThrow(() -> new RuntimeException("Invalid OTP for email: " + email));
 
         if (fp.getExpirationTime().before(new Date())) {
-            forgotPasswordRepository.deleteById(fp.getFpid());
+            forgotPasswordRepository.deleteById(fp.getForgotPasswordId());
             return new ResponseEntity<>("OTP has expired. Please request a new one.", HttpStatus.BAD_REQUEST);
         }
 
@@ -119,7 +119,7 @@ public class ForgotPasswordController {
 
         String encodedPassword = passwordEncoder.encode(changePassword.password());
         userRepository.updatePassword(email, encodedPassword);
-        forgotPasswordRepository.deleteById(fp.getFpid());
+        forgotPasswordRepository.deleteById(fp.getForgotPasswordId());
 
         return ResponseEntity.ok("Password changed successfully!");
     }

@@ -39,20 +39,20 @@ public class ExpenseController {
         return ResponseEntity.ok(expenseService.getAllExpenses());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Expense> updateExpense(@PathVariable Long id, @RequestBody ExpenseDto expenseDto) {
-        return ResponseEntity.ok(expenseService.updateExpense(id, expenseDto));
+    @PutMapping("/{expenseId}")
+    public ResponseEntity<Expense> updateExpense(@PathVariable Long expenseId, @RequestBody ExpenseDto expenseDto) {
+        return ResponseEntity.ok(expenseService.updateExpense(expenseId, expenseDto));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteExpense(@PathVariable Long id) {
-        expenseRepository.deleteById(id);
+    @DeleteMapping("/{expenseId}")
+    public ResponseEntity<String> deleteExpense(@PathVariable Long expenseId) {
+        expenseRepository.deleteById(expenseId);
         return ResponseEntity.ok("Expense deleted successfully");
     }
 
     @DeleteMapping
-    public ResponseEntity<String> deleteExpenses(@RequestBody List<Long> ids) {
-        expenseRepository.deleteAllById(ids);
+    public ResponseEntity<String> deleteExpenses(@RequestBody List<Long> expenseIds) {
+        expenseRepository.deleteAllById(expenseIds);
         return ResponseEntity.ok("Expenses deleted successfully");
     }
 

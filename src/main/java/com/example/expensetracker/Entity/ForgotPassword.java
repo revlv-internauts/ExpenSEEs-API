@@ -16,7 +16,7 @@ import java.util.Date;
 public class ForgotPassword {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer fpid;
+    private Integer forgotPasswordId;
 
     @Column(nullable = false)
     private Integer otp;

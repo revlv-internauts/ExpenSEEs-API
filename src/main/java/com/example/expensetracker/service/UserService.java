@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class UserService {
 
@@ -28,5 +30,11 @@ public class UserService {
         } catch (Exception e) {
             return new ResponseEntity<>("Error while creating user", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    public ResponseEntity<User> getUserWithDetails(Long userId) {
+        Optional<User> user = userRepository.findByIdWithDetails(userId);
+        return user.map(ResponseEntity::ok)
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 }

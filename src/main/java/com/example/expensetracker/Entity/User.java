@@ -16,7 +16,7 @@ import java.util.List;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long userId;
 
     @Column(unique = true, nullable = false)
     private String username;
@@ -30,4 +30,12 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Expense> expenses;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<SubmittedBudget> budgets;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<ForgotPassword> forgotPasswords;
 }

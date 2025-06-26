@@ -27,12 +27,12 @@ public class BudgetController {
         return ResponseEntity.ok(budgetService.getAllBudgets());
     }
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/{budgetId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String status) {
+    public ResponseEntity<String> updateStatus(@PathVariable Long budgetId, @RequestBody String status) {
         try {
             SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
-            budgetService.updateBudgetStatus(id, enumStatus);
+            budgetService.updateBudgetStatus(budgetId, enumStatus);
             return ResponseEntity.ok("Status updated successfully");
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>("Invalid status", HttpStatus.BAD_REQUEST);

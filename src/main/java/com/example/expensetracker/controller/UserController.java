@@ -2,6 +2,7 @@ package com.example.expensetracker.controller;
 
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.UserRepository;
+import com.example.expensetracker.service.UserService;
 import com.example.expensetracker.util.ChangePassword;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,9 @@ public class UserController {
     private UserRepository userRepository;
 
     @Autowired
+    private UserService userService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/reset-password")
@@ -35,5 +39,10 @@ public class UserController {
         String encodedPassword = passwordEncoder.encode(changePassword.password());
         userRepository.updatePassword(email, encodedPassword);
         return ResponseEntity.ok("Password has been changed!");
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<User> getUserWithDetails(@PathVariable Long userId) {
+        return userService.getUserWithDetails(userId);
     }
 }

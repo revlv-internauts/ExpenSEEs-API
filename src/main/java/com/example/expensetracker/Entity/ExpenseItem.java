@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class ExpenseItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long expenseItemId;
 
     @Column(nullable = false)
     private String category;

@@ -14,7 +14,7 @@ public class ExpenseDto {
     private Double amount;
     private Integer quantity;
     private Double amountPerUnit;
-    private String comments;
+    private String remarks;
     private LocalDate dateOfTransaction;
     private String imagePath;
 

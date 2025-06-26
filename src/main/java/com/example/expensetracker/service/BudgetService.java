@@ -47,13 +47,13 @@ public class BudgetService {
     public List<SubmittedBudget> getAllBudgets() {
         User user = userRepository.findByUsername(getCurrentUsername());
         return budgetRepository.findAll().stream()
-                .filter(budget -> budget.getUser().getId().equals(user.getId()))
+                .filter(budget -> budget.getUser().getUserId().equals(user.getUserId()))
                 .toList();
     }
 
     @Transactional
-    public void updateBudgetStatus(Long id, SubmittedBudget.Status status) {
-        SubmittedBudget budget = budgetRepository.findById(id)
+    public void updateBudgetStatus(Long budgetId, SubmittedBudget.Status status) {
+        SubmittedBudget budget = budgetRepository.findById(budgetId)
                 .orElseThrow(() -> new IllegalArgumentException("Budget not found"));
         budget.setStatus(status);
         budgetRepository.save(budget);

@@ -37,7 +37,7 @@ public class ExpenseService {
         Expense expense = new Expense();
         expense.setCategory(expenseDto.getCategory());
         expense.setAmount(expenseDto.calculateTotal());
-        expense.setComments(expenseDto.getComments());
+        expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
         expense.setImagePath(expenseDto.getImagePath());
         expense.setCreatedAt(LocalDateTime.now());
@@ -60,12 +60,12 @@ public class ExpenseService {
     }
 
     @Transactional
-    public Expense updateExpense(Long id, ExpenseDto expenseDto) {
-        Expense expense = expenseRepository.findById(id)
+    public Expense updateExpense(Long expenseId, ExpenseDto expenseDto) {
+        Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
         expense.setCategory(expenseDto.getCategory());
         expense.setAmount(expenseDto.calculateTotal());
-        expense.setComments(expenseDto.getComments());
+        expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
         expense.setImagePath(expenseDto.getImagePath());
         expense.setUpdatedAt(LocalDateTime.now());

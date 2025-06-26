@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class Expense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long expenseId;
 
     @Column(nullable = false)
     private String category;
@@ -24,7 +24,7 @@ public class Expense {
     @Column(nullable = false)
     private Double amount;
 
-    private String comments;
+    private String remarks;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -36,4 +36,3 @@ public class Expense {
     private LocalDate dateOfTransaction;
     private String imagePath;
 }
-
