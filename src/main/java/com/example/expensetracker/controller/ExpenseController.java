@@ -14,9 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DecimalFormat;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,20 +57,13 @@ public class ExpenseController {
     }
 
     @GetMapping("/total-amount")
-    public ResponseEntity<String> getTotalExpenseAmount() {
-        double total = expenseService.getTotalExpenseAmount();
-        return ResponseEntity.ok(new DecimalFormat("#,###.##").format(total));
+    public ResponseEntity<Double> getTotalExpenseAmount() {
+        return ResponseEntity.ok(expenseService.getTotalExpenseAmount());
     }
 
     @GetMapping("/distribution")
-    public ResponseEntity<Map<String, String>> getExpenseDistribution() {
-        Map<String, Double> distribution = expenseService.getExpenseDistributionByCategory();
-        Map<String, String> formattedDistribution = distribution.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> new DecimalFormat("#,###.##").format(entry.getValue())
-                ));
-        return ResponseEntity.ok(formattedDistribution);
+    public ResponseEntity<Map<String, Double>> getExpenseDistribution() {
+        return ResponseEntity.ok(expenseService.getExpenseDistributionByCategory());
     }
 
     @GetMapping("/top")

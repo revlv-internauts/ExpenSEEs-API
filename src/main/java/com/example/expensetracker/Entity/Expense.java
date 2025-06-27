@@ -1,13 +1,11 @@
 package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -37,11 +35,4 @@ public class Expense {
     private LocalDateTime updatedAt;
     private LocalDate dateOfTransaction;
     private String imagePath;
-
-    // Method to format amount with comma as thousand separator
-    @JsonProperty("amount")
-    public String getFormattedAmount() {
-        DecimalFormat formatter = new DecimalFormat("#,###.##");
-        return formatter.format(amount);
-    }
 }
