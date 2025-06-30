@@ -34,9 +34,14 @@ public class ExpenseService {
         User user = userRepository.findByUsername(username);
         if (user == null) throw new UsernameNotFoundException("User not found: " + username);
 
+        Double amount = expenseDto.calculateTotal();
+        if (amount != null && amount < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
+        }
+
         Expense expense = new Expense();
         expense.setCategory(expenseDto.getCategory());
-        expense.setAmount(expenseDto.calculateTotal());
+        expense.setAmount(amount);
         expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
         expense.setImagePath(expenseDto.getImagePath());
@@ -63,8 +68,14 @@ public class ExpenseService {
     public Expense updateExpense(Long expenseId, ExpenseDto expenseDto) {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+
+        Double amount = expenseDto.calculateTotal();
+        if (amount != null && amount < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
+        }
+
         expense.setCategory(expenseDto.getCategory());
-        expense.setAmount(expenseDto.calculateTotal());
+        expense.setAmount(amount);
         expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
         expense.setImagePath(expenseDto.getImagePath());
