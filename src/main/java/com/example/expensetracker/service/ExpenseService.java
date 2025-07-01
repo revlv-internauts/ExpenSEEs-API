@@ -5,6 +5,7 @@ import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.dto.ExpenseDto;
+import com.example.expensetracker.exception.UnauthorizedAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -67,6 +68,7 @@ public class ExpenseService {
     public Expense updateExpense(Long expenseId, ExpenseDto expenseDto) {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        checkExpenseOwnership(expense);
 
         Double amount = expenseDto.calculateTotal();
         if (amount != null && amount < 0) {
@@ -95,6 +97,36 @@ public class ExpenseService {
                 .sorted((e1, e2) -> e2.getCreatedAt().compareTo(e1.getCreatedAt()))
                 .limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    public Expense getExpenseById(Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        checkExpenseOwnership(expense);
+        return expense;
+    }
+
+    public void deleteExpense(Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        checkExpenseOwnership(expense);
+        expenseRepository.deleteById(expenseId);
+    }
+
+    public void deleteExpenses(List<Long> expenseIds) {
+        for (Long expenseId : expenseIds) {
+            Expense expense = expenseRepository.findById(expenseId)
+                    .orElseThrow(() -> new IllegalArgumentException("Expense not found: " + expenseId));
+            checkExpenseOwnership(expense);
+        }
+        expenseRepository.deleteAllById(expenseIds);
+    }
+
+    private void checkExpenseOwnership(Expense expense) {
+        String username = getCurrentUsername();
+        if (!expense.getUser().getUsername().equals(username)) {
+            throw new UnauthorizedAccessException("Unauthorized access to expense");
+        }
     }
 
     private String getCurrentUsername() {

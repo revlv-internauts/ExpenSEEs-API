@@ -42,7 +42,6 @@ public class Expense {
     @Column(columnDefinition = "TEXT")
     private String imagePaths;
 
-    // Custom getter to deserialize JSON string to List<String>
     public List<String> getImagePaths() {
         if (imagePaths == null || imagePaths.isEmpty()) {
             return new ArrayList<>();
@@ -55,7 +54,6 @@ public class Expense {
         }
     }
 
-    // Custom setter to serialize List<String> to JSON string
     public void setImagePaths(List<String> imagePaths) {
         try {
             ObjectMapper mapper = new ObjectMapper();

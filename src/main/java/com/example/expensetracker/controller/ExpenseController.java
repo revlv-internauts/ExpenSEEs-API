@@ -4,21 +4,21 @@ import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,6 +32,7 @@ public class ExpenseController {
     private ExpenseService expenseService;
 
     @PostMapping(consumes = {"multipart/form-data", "application/json"})
+    @Transactional
     public ResponseEntity<Expense> addExpense(
             @RequestParam(value = "category") String category,
             @RequestParam(value = "amount", required = false) Double amount,
@@ -39,7 +40,40 @@ public class ExpenseController {
             @RequestParam(value = "amountPerUnit", required = false) Double amountPerUnit,
             @RequestParam(value = "remarks", required = false) String remarks,
             @RequestParam(value = "dateOfTransaction", required = false) String dateOfTransaction,
-            @RequestParam(value = "files", required = false) MultipartFile[] files) throws IOException {
+            @RequestParam(value = "files") MultipartFile[] files) throws IOException {
+        // Validate files before creating expense
+        if (files == null || files.length == 0 || files[0].isEmpty()) {
+            throw new IllegalArgumentException("At least one image file is required");
+        }
+
+        String uploadDir = "Uploads/";
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        List<String> imagePaths = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                String contentType = file.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    throw new IllegalArgumentException("Only image files are allowed");
+                }
+                BufferedImage image = ImageIO.read(file.getInputStream());
+                if (image == null) {
+                    throw new IllegalArgumentException("Invalid image file: " + file.getOriginalFilename());
+                }
+                String fileName = UUID.randomUUID() + ".jpg";
+                Path filePath = uploadPath.resolve(fileName);
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "jpg", baos);
+                Files.write(filePath, baos.toByteArray());
+
+                imagePaths.add(uploadDir + fileName);
+            }
+        }
+
         ExpenseDto expenseDto = new ExpenseDto();
         expenseDto.setCategory(category);
         expenseDto.setAmount(amount);
@@ -49,30 +83,8 @@ public class ExpenseController {
         expenseDto.setDateOfTransaction(dateOfTransaction != null ? LocalDate.parse(dateOfTransaction) : null);
 
         Expense expense = expenseService.addExpense(expenseDto);
-
-        if (files != null && files.length > 0) {
-            String uploadDir = "Uploads/";
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            List<String> imagePaths = new ArrayList<>(expense.getImagePaths());
-            for (MultipartFile file : files) {
-                if (!file.isEmpty()) {
-                    String contentType = file.getContentType();
-                    if (contentType == null || !contentType.startsWith("image/")) {
-                        throw new IllegalArgumentException("Only image files are allowed");
-                    }
-                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-                    Path filePath = uploadPath.resolve(fileName);
-                    Files.write(filePath, file.getBytes());
-                    imagePaths.add(uploadDir + fileName);
-                }
-            }
-            expense.setImagePaths(imagePaths);
-            expenseRepository.save(expense);
-        }
+        expense.setImagePaths(imagePaths);
+        expenseRepository.save(expense);
 
         return ResponseEntity.ok(expense);
     }
@@ -83,6 +95,7 @@ public class ExpenseController {
     }
 
     @PutMapping("/{expenseId}")
+    @Transactional
     public ResponseEntity<Expense> updateExpense(
             @PathVariable Long expenseId,
             @RequestParam(value = "category") String category,
@@ -102,7 +115,7 @@ public class ExpenseController {
 
         Expense expense = expenseService.updateExpense(expenseId, expenseDto);
 
-        if (files != null && files.length > 0) {
+        if (files != null && files.length > 0 && !files[0].isEmpty()) {
             String uploadDir = "Uploads/";
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
@@ -116,9 +129,17 @@ public class ExpenseController {
                     if (contentType == null || !contentType.startsWith("image/")) {
                         throw new IllegalArgumentException("Only image files are allowed");
                     }
-                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+                    BufferedImage image = ImageIO.read(file.getInputStream());
+                    if (image == null) {
+                        throw new IllegalArgumentException("Invalid image file: " + file.getOriginalFilename());
+                    }
+                    String fileName = UUID.randomUUID() + ".jpg";
                     Path filePath = uploadPath.resolve(fileName);
-                    Files.write(filePath, file.getBytes());
+
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ImageIO.write(image, "jpg", baos);
+                    Files.write(filePath, baos.toByteArray());
+
                     imagePaths.add(uploadDir + fileName);
                 }
             }
@@ -130,20 +151,26 @@ public class ExpenseController {
     }
 
     @DeleteMapping("/{expenseId}")
-    public ResponseEntity<String> deleteExpense(@PathVariable Long expenseId) {
-        expenseRepository.deleteById(expenseId);
-        return ResponseEntity.ok("Expense deleted successfully");
+    public ResponseEntity<Map<String, String>> deleteExpense(@PathVariable Long expenseId) {
+        expenseService.deleteExpense(expenseId);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Expense deleted successfully");
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping
-    public ResponseEntity<String> deleteExpenses(@RequestBody List<Long> expenseIds) {
-        expenseRepository.deleteAllById(expenseIds);
-        return ResponseEntity.ok("Expenses deleted successfully");
+    public ResponseEntity<Map<String, String>> deleteExpenses(@RequestBody List<Long> expenseIds) {
+        expenseService.deleteExpenses(expenseIds);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Expenses deleted successfully");
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/total-amount")
-    public ResponseEntity<Double> getTotalExpenseAmount() {
-        return ResponseEntity.ok(expenseService.getTotalExpenseAmount());
+    public ResponseEntity<Map<String, Double>> getTotalExpenseAmount() {
+        Map<String, Double> response = new HashMap<>();
+        response.put("totalAmount", expenseService.getTotalExpenseAmount());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/distribution")
@@ -162,8 +189,7 @@ public class ExpenseController {
 
     @GetMapping("/{expenseId}/images")
     public ResponseEntity<List<String>> getExpenseImages(@PathVariable Long expenseId) {
-        Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        Expense expense = expenseService.getExpenseById(expenseId);
         return ResponseEntity.ok(expense.getImagePaths());
     }
 
