@@ -1,6 +1,8 @@
 package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -8,6 +10,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -34,5 +38,30 @@ public class Expense {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDate dateOfTransaction;
-    private String imagePath;
+
+    @Column(columnDefinition = "TEXT")
+    private String imagePaths;
+
+    // Custom getter to deserialize JSON string to List<String>
+    public List<String> getImagePaths() {
+        if (imagePaths == null || imagePaths.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(imagePaths, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    // Custom setter to serialize List<String> to JSON string
+    public void setImagePaths(List<String> imagePaths) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            this.imagePaths = mapper.writeValueAsString(imagePaths);
+        } catch (Exception e) {
+            this.imagePaths = "[]";
+        }
+    }
 }

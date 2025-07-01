@@ -44,7 +44,6 @@ public class ExpenseService {
         expense.setAmount(amount);
         expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
-        expense.setImagePath(expenseDto.getImagePath());
         expense.setCreatedAt(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
         expense.setUser(user);
@@ -78,7 +77,6 @@ public class ExpenseService {
         expense.setAmount(amount);
         expense.setRemarks(expenseDto.getRemarks());
         expense.setDateOfTransaction(expenseDto.getDateOfTransaction() != null ? expenseDto.getDateOfTransaction() : LocalDate.now());
-        expense.setImagePath(expenseDto.getImagePath());
         expense.setUpdatedAt(LocalDateTime.now());
         return expenseRepository.save(expense);
     }

@@ -5,7 +5,6 @@ import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,9 +13,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,9 +31,50 @@ public class ExpenseController {
     @Autowired
     private ExpenseService expenseService;
 
-    @PostMapping
-    public ResponseEntity<Expense> addExpense(@RequestBody ExpenseDto expenseDto) {
-        return ResponseEntity.ok(expenseService.addExpense(expenseDto));
+    @PostMapping(consumes = {"multipart/form-data", "application/json"})
+    public ResponseEntity<Expense> addExpense(
+            @RequestParam(value = "category") String category,
+            @RequestParam(value = "amount", required = false) Double amount,
+            @RequestParam(value = "quantity", required = false) Integer quantity,
+            @RequestParam(value = "amountPerUnit", required = false) Double amountPerUnit,
+            @RequestParam(value = "remarks", required = false) String remarks,
+            @RequestParam(value = "dateOfTransaction", required = false) String dateOfTransaction,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) throws IOException {
+        ExpenseDto expenseDto = new ExpenseDto();
+        expenseDto.setCategory(category);
+        expenseDto.setAmount(amount);
+        expenseDto.setQuantity(quantity);
+        expenseDto.setAmountPerUnit(amountPerUnit);
+        expenseDto.setRemarks(remarks);
+        expenseDto.setDateOfTransaction(dateOfTransaction != null ? LocalDate.parse(dateOfTransaction) : null);
+
+        Expense expense = expenseService.addExpense(expenseDto);
+
+        if (files != null && files.length > 0) {
+            String uploadDir = "Uploads/";
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            List<String> imagePaths = new ArrayList<>(expense.getImagePaths());
+            for (MultipartFile file : files) {
+                if (!file.isEmpty()) {
+                    String contentType = file.getContentType();
+                    if (contentType == null || !contentType.startsWith("image/")) {
+                        throw new IllegalArgumentException("Only image files are allowed");
+                    }
+                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+                    Path filePath = uploadPath.resolve(fileName);
+                    Files.write(filePath, file.getBytes());
+                    imagePaths.add(uploadDir + fileName);
+                }
+            }
+            expense.setImagePaths(imagePaths);
+            expenseRepository.save(expense);
+        }
+
+        return ResponseEntity.ok(expense);
     }
 
     @GetMapping
@@ -40,8 +83,50 @@ public class ExpenseController {
     }
 
     @PutMapping("/{expenseId}")
-    public ResponseEntity<Expense> updateExpense(@PathVariable Long expenseId, @RequestBody ExpenseDto expenseDto) {
-        return ResponseEntity.ok(expenseService.updateExpense(expenseId, expenseDto));
+    public ResponseEntity<Expense> updateExpense(
+            @PathVariable Long expenseId,
+            @RequestParam(value = "category") String category,
+            @RequestParam(value = "amount", required = false) Double amount,
+            @RequestParam(value = "quantity", required = false) Integer quantity,
+            @RequestParam(value = "amountPerUnit", required = false) Double amountPerUnit,
+            @RequestParam(value = "remarks", required = false) String remarks,
+            @RequestParam(value = "dateOfTransaction", required = false) String dateOfTransaction,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) throws IOException {
+        ExpenseDto expenseDto = new ExpenseDto();
+        expenseDto.setCategory(category);
+        expenseDto.setAmount(amount);
+        expenseDto.setQuantity(quantity);
+        expenseDto.setAmountPerUnit(amountPerUnit);
+        expenseDto.setRemarks(remarks);
+        expenseDto.setDateOfTransaction(dateOfTransaction != null ? LocalDate.parse(dateOfTransaction) : null);
+
+        Expense expense = expenseService.updateExpense(expenseId, expenseDto);
+
+        if (files != null && files.length > 0) {
+            String uploadDir = "Uploads/";
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            List<String> imagePaths = new ArrayList<>(expense.getImagePaths());
+            for (MultipartFile file : files) {
+                if (!file.isEmpty()) {
+                    String contentType = file.getContentType();
+                    if (contentType == null || !contentType.startsWith("image/")) {
+                        throw new IllegalArgumentException("Only image files are allowed");
+                    }
+                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+                    Path filePath = uploadPath.resolve(fileName);
+                    Files.write(filePath, file.getBytes());
+                    imagePaths.add(uploadDir + fileName);
+                }
+            }
+            expense.setImagePaths(imagePaths);
+            expenseRepository.save(expense);
+        }
+
+        return ResponseEntity.ok(expense);
     }
 
     @DeleteMapping("/{expenseId}")
@@ -75,40 +160,11 @@ public class ExpenseController {
                 .collect(Collectors.toList()));
     }
 
-    @PostMapping("/upload-image/{expenseId}")
-    public ResponseEntity<String> uploadImage(@PathVariable Long expenseId, @RequestParam("file") MultipartFile file) {
-        try {
-            String uploadDir = "uploads/";
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Path filePath = uploadPath.resolve(fileName);
-            Files.write(filePath, file.getBytes());
-
-            Expense expense = expenseRepository.findById(expenseId)
-                    .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
-            expense.setImagePath(uploadDir + fileName);
-            expenseRepository.save(expense);
-
-            return ResponseEntity.ok("Image uploaded successfully: " + uploadDir + fileName);
-        } catch (IOException e) {
-            return new ResponseEntity<>("Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/image/{filename}")
-    public ResponseEntity<byte[]> getImage(@PathVariable String filename) throws IOException {
-        Path filePath = Paths.get("uploads/" + filename);
-        if (!Files.exists(filePath)) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        byte[] imageBytes = Files.readAllBytes(filePath);
-        return ResponseEntity.ok()
-                .header("Content-Type", "image/jpeg")
-                .body(imageBytes);
+    @GetMapping("/{expenseId}/images")
+    public ResponseEntity<List<String>> getExpenseImages(@PathVariable Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
+        return ResponseEntity.ok(expense.getImagePaths());
     }
 
     @GetMapping("/recent")
