@@ -6,7 +6,11 @@ import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,9 +101,6 @@ public class ExpenseController {
         } catch (IOException e) {
             response.put("error", "Failed to process file upload: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch (IllegalArgumentException e) {
-            response.put("error", e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -164,9 +166,6 @@ public class ExpenseController {
         } catch (IOException e) {
             response.put("error", "Failed to process file upload: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch (IllegalArgumentException e) {
-            response.put("error", e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -236,27 +235,25 @@ public class ExpenseController {
             }
 
             String imagePath = imagePaths.get(index);
-            Path filePath = Paths.get(imagePath);
-            if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+            File file = new File(imagePath);
+            if (!file.exists() || !file.isFile()) {
                 response.put("error", "Image file not found: " + imagePath);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
 
-            String contentType = Files.probeContentType(filePath);
+            Resource resource = new FileSystemResource(file);
+            String contentType = Files.probeContentType(file.toPath());
             if (contentType == null) {
                 contentType = "image/jpeg"; // Default to JPEG
             }
 
-            return ResponseEntity.ok(Map.of(
-                    "imagePath", imagePath,
-                    "contentType", contentType
-            ));
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                    .body(resource);
         } catch (IOException e) {
             response.put("error", "Failed to retrieve image: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch (IllegalArgumentException e) {
-            response.put("error", e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
