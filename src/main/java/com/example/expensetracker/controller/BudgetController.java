@@ -8,7 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/budgets")
@@ -18,30 +19,39 @@ public class BudgetController {
     private BudgetService budgetService;
 
     @PostMapping
-    public ResponseEntity<SubmittedBudget> createBudget(@RequestBody SubmittedBudget budget) {
-        return ResponseEntity.ok(budgetService.createBudget(budget));
+    public ResponseEntity<Map<String, Object>> createBudget(@RequestBody SubmittedBudget budget) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", budgetService.createBudget(budget));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<SubmittedBudget>> getBudgets() {
-        return ResponseEntity.ok(budgetService.getAllBudgets());
+    public ResponseEntity<Map<String, Object>> getBudgets() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", budgetService.getAllBudgets());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{budgetId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> updateStatus(@PathVariable Long budgetId, @RequestBody String status) {
+    public ResponseEntity<Map<String, String>> updateStatus(@PathVariable Long budgetId, @RequestBody String status) {
+        Map<String, String> response = new HashMap<>();
         try {
             SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
             budgetService.updateBudgetStatus(budgetId, enumStatus);
-            return ResponseEntity.ok("Status updated successfully");
+            response.put("message", "Status updated successfully");
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>("Invalid status", HttpStatus.BAD_REQUEST);
+            response.put("error", "Invalid status");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
     @PostMapping("/{budgetId}/expenses/{expenseId}")
-    public ResponseEntity<String> associateExpense(@PathVariable Long budgetId, @PathVariable Long expenseId) {
+    public ResponseEntity<Map<String, String>> associateExpense(@PathVariable Long budgetId, @PathVariable Long expenseId) {
+        Map<String, String> response = new HashMap<>();
         budgetService.associateExpenseWithBudget(budgetId, expenseId);
-        return ResponseEntity.ok("Expense associated with budget successfully");
+        response.put("message", "Expense associated with budget successfully");
+        return ResponseEntity.ok(response);
     }
 }

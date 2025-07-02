@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/funds")
 public class FundRequestController {
@@ -14,8 +17,10 @@ public class FundRequestController {
     private BudgetService budgetService;
 
     @PostMapping("/request")
-    public ResponseEntity<String> requestFund(@RequestBody SubmittedBudget budget) {
+    public ResponseEntity<Map<String, String>> requestFund(@RequestBody SubmittedBudget budget) {
+        Map<String, String> response = new HashMap<>();
         budgetService.createBudget(budget);
-        return ResponseEntity.ok("Fund request for " + budget.getName() + " submitted successfully");
+        response.put("message", "Fund request for " + budget.getName() + " submitted successfully");
+        return ResponseEntity.ok(response);
     }
 }

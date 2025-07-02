@@ -3,9 +3,13 @@ package com.example.expensetracker.controller;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -16,7 +20,14 @@ public class AdminController {
 
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> createUser(@RequestBody User user) {
-        return userService.createUser(user);
+    public ResponseEntity<Map<String, String>> createUser(@RequestBody User user) {
+        ResponseEntity<String> result = userService.createUser(user);
+        Map<String, String> response = new HashMap<>();
+        if (result.getStatusCode() == HttpStatus.CREATED) {
+            response.put("message", result.getBody());
+        } else {
+            response.put("error", result.getBody());
+        }
+        return new ResponseEntity<>(response, result.getStatusCode());
     }
 }

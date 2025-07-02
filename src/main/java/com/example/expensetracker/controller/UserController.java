@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 @RestController
@@ -29,20 +31,34 @@ public class UserController {
 
     @PostMapping("/reset-password")
     @Transactional
-    public ResponseEntity<String> resetPassword(@RequestBody ChangePassword changePassword,
-                                                @RequestParam("email") String email) {
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ChangePassword changePassword,
+                                                             @RequestParam("email") String email) {
+        Map<String, String> response = new HashMap<>();
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> {
+                    response.put("error", "User not found");
+                    return new IllegalArgumentException("User not found");
+                });
         if (!Objects.equals(changePassword.password(), changePassword.repeatPassword())) {
-            return new ResponseEntity<>("Passwords do not match", HttpStatus.BAD_REQUEST);
+            response.put("error", "Passwords do not match");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
         String encodedPassword = passwordEncoder.encode(changePassword.password());
         userRepository.updatePassword(email, encodedPassword);
-        return ResponseEntity.ok("Password has been changed!");
+        response.put("message", "Password has been changed!");
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<User> getUserWithDetails(@PathVariable Long userId) {
-        return userService.getUserWithDetails(userId);
+    public ResponseEntity<Map<String, Object>> getUserWithDetails(@PathVariable Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        ResponseEntity<User> result = userService.getUserWithDetails(userId);
+        if (result.getStatusCode() == HttpStatus.OK) {
+            response.put("data", result.getBody());
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "User not found");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
     }
 }

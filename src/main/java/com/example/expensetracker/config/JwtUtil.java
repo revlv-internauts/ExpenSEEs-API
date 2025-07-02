@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class JwtUtil {
-    public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60 * 1000; // 5 hours for access token
-    public static final long REFRESH_TOKEN_VALIDITY = 7 * 24 * 60 * 60 * 1000; // 7 days for refresh token
+    public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60 * 1000; // 5 hours
+    public static final long JWT_REFRESH_TOKEN_VALIDITY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
     @Value("${jwt.secret}")
     private String secret;
@@ -66,15 +66,15 @@ public class JwtUtil {
         claims.put("roles", userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList()));
-        return doGenerateToken(claims, userDetails.getUsername(), REFRESH_TOKEN_VALIDITY);
+        return doGenerateToken(claims, userDetails.getUsername(), JWT_REFRESH_TOKEN_VALIDITY);
     }
 
-    private String doGenerateToken(Map<String, Object> claims, String subject, long expirationMillis) {
+    private String doGenerateToken(Map<String, Object> claims, String subject, long validity) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
+                .setExpiration(new Date(System.currentTimeMillis() + validity))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -85,6 +85,11 @@ public class JwtUtil {
     }
 
     public Boolean validateRefreshToken(String token) {
-        return !isTokenExpired(token); // Additional validation (e.g., blacklist check) can be added
+        try {
+            getAllClaimsFromToken(token);
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
