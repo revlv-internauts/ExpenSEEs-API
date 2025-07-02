@@ -50,12 +50,11 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserWithDetails(@PathVariable Long userId) {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> getUserWithDetails(@PathVariable Long userId) {
+        Map<String, String> response = new HashMap<>();
         ResponseEntity<User> result = userService.getUserWithDetails(userId);
         if (result.getStatusCode() == HttpStatus.OK) {
-            response.put("data", result.getBody());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(result.getBody());
         } else {
             response.put("error", "User not found");
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);

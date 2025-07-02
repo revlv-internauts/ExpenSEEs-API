@@ -21,8 +21,8 @@ public class AdminController {
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> createUser(@RequestBody User user) {
-        ResponseEntity<String> result = userService.createUser(user);
         Map<String, String> response = new HashMap<>();
+        ResponseEntity<String> result = userService.createUser(user);
         if (result.getStatusCode() == HttpStatus.CREATED) {
             response.put("message", result.getBody());
         } else {

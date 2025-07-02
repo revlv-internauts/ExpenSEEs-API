@@ -31,7 +31,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/auth/sign-in")
-    public ResponseEntity<Map<String, Object>> signIn(@RequestBody Map<String, String> credentials) {
+    public ResponseEntity<?> signIn(@RequestBody Map<String, String> credentials) {
         String usernameOrEmail = credentials.get("usernameOrEmail");
         String password = credentials.get("password");
 
@@ -51,7 +51,7 @@ public class AuthController {
         UserDetails userDetails = loginService.loadUserByUsername(user.getUsername());
         String accessToken = jwtUtil.generateToken(userDetails);
         String refreshToken = jwtUtil.generateRefreshToken(userDetails);
-        response.put("data", Map.of(
+        return ResponseEntity.ok(Map.of(
                 "access_token", accessToken,
                 "refresh_token", refreshToken,
                 "user_id", user.getUserId(),
@@ -59,11 +59,10 @@ public class AuthController {
                 "email", user.getEmail(),
                 "status", "success"
         ));
-        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/auth/refresh-token")
-    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> tokenRequest) {
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> tokenRequest) {
         String refreshToken = tokenRequest.get("refresh_token");
         Map<String, Object> response = new HashMap<>();
         if (refreshToken == null || refreshToken.isEmpty()) {
@@ -77,13 +76,12 @@ public class AuthController {
             if (user != null) {
                 UserDetails userDetails = loginService.loadUserByUsername(username);
                 String newAccessToken = jwtUtil.generateToken(userDetails);
-                response.put("data", Map.of(
+                return ResponseEntity.ok(Map.of(
                         "access_token", newAccessToken,
                         "refresh_token", refreshToken,
                         "user_id", user.getUserId(),
                         "status", "success"
                 ));
-                return ResponseEntity.ok(response);
             }
         }
         response.put("error", "Invalid refresh token");

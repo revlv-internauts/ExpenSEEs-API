@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,17 +20,13 @@ public class BudgetController {
     private BudgetService budgetService;
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createBudget(@RequestBody SubmittedBudget budget) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", budgetService.createBudget(budget));
-        return ResponseEntity.ok(response);
+    public ResponseEntity<SubmittedBudget> createBudget(@RequestBody SubmittedBudget budget) {
+        return ResponseEntity.ok(budgetService.createBudget(budget));
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getBudgets() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", budgetService.getAllBudgets());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<SubmittedBudget>> getBudgets() {
+        return ResponseEntity.ok(budgetService.getAllBudgets());
     }
 
     @PutMapping("/{budgetId}/status")

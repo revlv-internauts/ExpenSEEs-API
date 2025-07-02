@@ -6,11 +6,7 @@ import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.service.ExpenseService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,13 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -38,7 +34,7 @@ public class ExpenseController {
 
     @PostMapping(consumes = {"multipart/form-data", "application/json"})
     @Transactional
-    public ResponseEntity<Map<String, Object>> addExpense(
+    public ResponseEntity<?> addExpense(
             @RequestParam(value = "category") String category,
             @RequestParam(value = "amount", required = false) Double amount,
             @RequestParam(value = "quantity", required = false) Integer quantity,
@@ -96,8 +92,7 @@ public class ExpenseController {
             expense.setImagePaths(imagePaths);
             expenseRepository.save(expense);
 
-            response.put("data", expense);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(expense);
         } catch (IOException e) {
             response.put("error", "Failed to process file upload: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -109,7 +104,7 @@ public class ExpenseController {
 
     @PutMapping("/{expenseId}")
     @Transactional
-    public ResponseEntity<Map<String, Object>> updateExpense(
+    public ResponseEntity<?> updateExpense(
             @PathVariable Long expenseId,
             @RequestParam(value = "category") String category,
             @RequestParam(value = "amount", required = false) Double amount,
@@ -165,8 +160,7 @@ public class ExpenseController {
                 expenseRepository.save(expense);
             }
 
-            response.put("data", expense);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(expense);
         } catch (IOException e) {
             response.put("error", "Failed to process file upload: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -176,8 +170,59 @@ public class ExpenseController {
         }
     }
 
-    // Other methods remain unchanged unless they also involve file handling
-    // Example for getExpenseImages to handle IOException
+    @GetMapping
+    public ResponseEntity<List<Expense>> getAllExpenses() {
+        return ResponseEntity.ok(expenseService.getAllExpenses());
+    }
+
+    @DeleteMapping("/{expenseId}")
+    public ResponseEntity<Map<String, String>> deleteExpense(@PathVariable Long expenseId) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            expenseService.deleteExpense(expenseId);
+            response.put("message", "Expense deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Map<String, String>> deleteExpenses(@RequestBody List<Long> expenseIds) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            expenseService.deleteExpenses(expenseIds);
+            response.put("message", "Expenses deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @GetMapping("/total-amount")
+    public ResponseEntity<Map<String, Double>> getTotalExpenseAmount() {
+        Map<String, Double> response = new HashMap<>();
+        response.put("totalAmount", expenseService.getTotalExpenseAmount());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/distribution")
+    public ResponseEntity<Map<String, Double>> getExpenseDistribution() {
+        return ResponseEntity.ok(expenseService.getExpenseDistributionByCategory());
+    }
+
+    @GetMapping("/top")
+    public ResponseEntity<List<Expense>> getTopExpenses() {
+        List<Expense> expenses = expenseService.getAllExpenses();
+        List<Expense> topExpenses = expenses.stream()
+                .sorted(Comparator.comparing(Expense::getAmount).reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(topExpenses);
+    }
+
     @GetMapping("/{expenseId}/images")
     public ResponseEntity<?> getExpenseImages(@PathVariable Long expenseId, @RequestParam(value = "index", defaultValue = "0") int index) {
         Map<String, Object> response = new HashMap<>();
@@ -191,27 +236,32 @@ public class ExpenseController {
             }
 
             String imagePath = imagePaths.get(index);
-            File file = new File(imagePath);
-            if (!file.exists() || !file.isFile()) {
+            Path filePath = Paths.get(imagePath);
+            if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
                 response.put("error", "Image file not found: " + imagePath);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
 
-            Resource resource = new FileSystemResource(file);
-            String contentType = Files.probeContentType(file.toPath());
+            String contentType = Files.probeContentType(filePath);
             if (contentType == null) {
                 contentType = "image/jpeg"; // Default to JPEG
             }
 
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
-                    .body(resource);
+            return ResponseEntity.ok(Map.of(
+                    "imagePath", imagePath,
+                    "contentType", contentType
+            ));
         } catch (IOException e) {
             response.put("error", "Failed to retrieve image: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
-    // Other methods (getAllExpenses, deleteExpense, etc.) remain unchanged
+    @GetMapping("/recent")
+    public ResponseEntity<List<Expense>> getRecentTransactions(@RequestParam(defaultValue = "5") int limit) {
+        return ResponseEntity.ok(expenseService.getRecentTransactions(limit));
+    }
 }
