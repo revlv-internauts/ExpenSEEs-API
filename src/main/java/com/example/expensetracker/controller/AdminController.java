@@ -30,4 +30,17 @@ public class AdminController {
         }
         return new ResponseEntity<>(response, result.getStatusCode());
     }
+
+    @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long userId) {
+        Map<String, String> response = new HashMap<>();
+        ResponseEntity<String> result = userService.deleteUser(userId);
+        if (result.getStatusCode() == HttpStatus.OK) {
+            response.put("message", result.getBody());
+        } else {
+            response.put("error", result.getBody());
+        }
+        return new ResponseEntity<>(response, result.getStatusCode());
+    }
 }
