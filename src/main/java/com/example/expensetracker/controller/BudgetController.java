@@ -29,15 +29,31 @@ public class BudgetController {
         return ResponseEntity.ok(budgetService.getAllBudgets());
     }
 
+    @GetMapping("/{budgetId}")
+    public ResponseEntity<?> getBudgetById(@PathVariable Long budgetId) {
+        ResponseEntity<SubmittedBudget> response = budgetService.getBudgetById(budgetId);
+        if (response.getStatusCode() == HttpStatus.OK) {
+            return ResponseEntity.ok(response.getBody());
+        }
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", response.getStatusCode() == HttpStatus.NOT_FOUND ? "Budget not found" :
+                response.getStatusCode() == HttpStatus.FORBIDDEN ? "Unauthorized access to budget" : "User not found");
+        return new ResponseEntity<>(errorResponse, response.getStatusCode());
+    }
+
     @PutMapping("/{budgetId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> updateStatus(@PathVariable Long budgetId, @RequestBody String status) {
         Map<String, String> response = new HashMap<>();
         try {
             SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
-            budgetService.updateBudgetStatus(budgetId, enumStatus);
-            response.put("message", "Status updated successfully");
-            return ResponseEntity.ok(response);
+            ResponseEntity<String> result = budgetService.updateBudgetStatus(budgetId, enumStatus);
+            if (result.getStatusCode() == HttpStatus.OK) {
+                response.put("message", result.getBody());
+            } else {
+                response.put("error", result.getBody());
+            }
+            return new ResponseEntity<>(response, result.getStatusCode());
         } catch (IllegalArgumentException e) {
             response.put("error", "Invalid status");
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
@@ -47,8 +63,12 @@ public class BudgetController {
     @PostMapping("/{budgetId}/expenses/{expenseId}")
     public ResponseEntity<Map<String, String>> associateExpense(@PathVariable Long budgetId, @PathVariable Long expenseId) {
         Map<String, String> response = new HashMap<>();
-        budgetService.associateExpenseWithBudget(budgetId, expenseId);
-        response.put("message", "Expense associated with budget successfully");
-        return ResponseEntity.ok(response);
+        ResponseEntity<String> result = budgetService.associateExpenseWithBudget(budgetId, expenseId);
+        if (result.getStatusCode() == HttpStatus.OK) {
+            response.put("message", result.getBody());
+        } else {
+            response.put("error", result.getBody());
+        }
+        return new ResponseEntity<>(response, result.getStatusCode());
     }
 }
