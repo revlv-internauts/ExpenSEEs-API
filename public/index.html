@@ -1,74 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Expense Tracker Admin Dashboard</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<!-- Login Screen -->
-<div class="login-bg" id="loginScreen">
+<div id="login-screen" class="login-bg">
     <div class="login-container">
-        <img src="images/logo.png" alt="Logo" class="logo" />
-        <input type="text" id="username" placeholder="Username or Email" />
-        <input type="password" id="password" placeholder="Password" />
+        <img src="images/logo.png" class="logo">
+        <input type="text" placeholder="Username" id="username">
+        <div class="password-wrapper">
+            <input type="password" placeholder="Password" id="password">
+            <span class="toggle-password" onclick="togglePassword('password', this)">👁️</span>
+        </div>
         <button onclick="login()">Login</button>
-        <a href="#">Forgot Password</a>
     </div>
 </div>
 
-<!-- Dashboard Screen -->
-<div class="dashboard" id="dashboard" style="display: none;">
-    <aside class="sidebar">
-        <img src="images/logo.png" alt="Logo" class="sidebar-logo" />
+<div id="dashboard" class="dashboard" style="display: none">
+    <div id="sidebar" class="sidebar">
+        <img src="images/logo.png" class="sidebar-logo">
         <ul>
-            <li>Dashboard</li>
-            <li>Budget Request</li>
-            <li>Transactions</li>
-            <li>Manage Users</li>
-            <li>Notifications</li>
-            <li>Account</li>
-            <li>Create User</li>
-            <li>Settings</li>
-            <li>Receipts</li>
-            <li>Help</li>
-            <li onclick="logout()">Log Out</li>
+            <li onclick="showTab('home')">🏠 Home</li>
+            <li onclick="showTab('users')">👥 Users</li>
+            <li onclick="showTab('budgets')">💳 Budget Requests</li>
+            <li onclick="showTab('expenses')">💸 Expenses</li>
+            <li onclick="logout()">🚪 Logout</li>
         </ul>
-    </aside>
+    </div>
 
-    <main class="content">
+    <div class="sidebar-toggle" onclick="toggleSidebar()">☰</div>
+    <div id="content" class="content">
         <header>
-            <h2>Welcome to expense tracker</h2>
-            <input type="text" placeholder="Search here..." class="search-bar" />
+            <h2>Welcome, Admin</h2>
         </header>
 
-        <section class="balance-section">
-            <div class="balance-card">
-                <p>Total Balance</p>
-                <h1>₱ 5,254.50</h1>
-                <p>2025-06-28</p>
+        <div id="home" class="tab active">
+            <div class="balance-section">
+                <div class="balance-card">
+                    <div class="label">Total Expenses</div>
+                    <h1>₱0</h1>
+                    <div class="date">As of now</div>
+                </div>
+                <div class="balance-card">
+                    <div class="label">Users</div>
+                    <h1>0</h1>
+                    <div class="date">Active users</div>
+                </div>
+                <div class="chart-card">
+                    <h4>Expense Categories</h4>
+                    <canvas id="expenseChart"></canvas>
+                </div>
             </div>
-            <div class="chart-placeholder">[ Pie Chart ]</div>
-        </section>
+        </div>
 
-        <section class="transactions-section">
-            <h3>Transactions</h3>
+        <div id="users" class="tab">
+            <div class="table-header">
+                <h3>User List</h3>
+                <div class="table-actions">
+                    <button onclick="openUserModal()">Add User</button>
+                </div>
+            </div>
             <table>
                 <thead>
-                <tr>
-                    <th>Category</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>User ID</th>
-                </tr>
+                <tr><th>ID</th><th>Username</th><th>Email</th><th>Password</th><th>Actions</th></tr>
                 </thead>
-                <tbody id="transactionTable">
-                <!-- Populated by script.js -->
-                </tbody>
+                <tbody id="users-table"></tbody>
             </table>
-        </section>
-    </main>
+        </div>
+
+        <div id="budgets" class="tab">
+            <div class="table-header">
+                <h3>Budget Requests</h3>
+            </div>
+            <table>
+                <thead>
+                <tr><th>ID</th><th>User</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody id="budget-table"></tbody>
+            </table>
+        </div>
+
+        <div id="expenses" class="tab">
+            <div class="table-header">
+                <h3>Expenses</h3>
+            </div>
+            <table>
+                <thead>
+                <tr><th>ID</th><th>User ID</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th></tr>
+                </thead>
+                <tbody id="expenses-table"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <h3>Add User</h3>
+        <input type="text" id="newUsername" placeholder="Username">
+        <input type="email" id="newEmail" placeholder="Email">
+        <div class="password-wrapper">
+            <input type="password" id="newPassword" placeholder="Password">
+            <span class="toggle-password" onclick="togglePassword('newPassword', this)">👁️</span>
+        </div>
+        <button onclick="createUser()">Add</button>
+        <button onclick="closeUserModal()">Cancel</button>
+    </div>
 </div>
 
 <script src="script.js"></script>
