@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserService {
 
@@ -35,7 +37,6 @@ public class UserService {
     }
 
     public ResponseEntity<String> deleteUser(Long userId) {
-        // Check if the user is trying to delete themselves
         String currentUsername = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
         User currentUser = userRepository.findByUsername(currentUsername);
         if (currentUser != null && currentUser.getUserId().equals(userId)) {
@@ -48,5 +49,9 @@ public class UserService {
 
         userRepository.deleteById(userId);
         return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
+    }
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 }
