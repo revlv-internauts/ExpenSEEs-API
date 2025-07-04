@@ -1,45 +1,170 @@
-body {
-    font-family: 'Arial', sans-serif;
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+  height: 100%;
+  overflow: hidden;
 }
 
-#sidebar a:hover {
-    transform: scale(1.05);
-    transition: transform 0.2s ease-in-out;
+.login-bg {
+  background: url('images/background.jpg') no-repeat center center fixed;
+  background-size: cover;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-input:focus, select:focus {
-    border-color: #2563eb;
-    outline: none;
+.login-container {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3rem 2.5rem;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
+  width: 370px;
 }
 
-button:hover {
-    transform: translateY(-2px);
-    transition: transform 0.2s ease-in-out;
+.login-container .logo {
+  width: 150px;
+  margin-bottom: 1.5rem;
 }
 
-.user-card, .budget-card, .expense-card, .report-card, .fund-card {
-    transition: all 0.3s ease-in-out;
+.login-container input {
+  width: 77%;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+  border: 2px solid #f46354;
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
 }
 
-.user-card:hover, .budget-card:hover, .expense-card:hover, .report-card:hover, .fund-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.login-container button {
+  width: 86%;
+  padding: 1rem;
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.3s;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.login-container button:hover {
+  background: #444;
 }
 
-.loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    animation: spin 1s linear infinite;
+.login-container a {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #333;
 }
 
-.section-hidden {
-    display: none;
+
+.dashboard {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  background-color: #f46354;
+  color: white;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sidebar-logo {
+  width: 100px;
+  margin-bottom: 1rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+}
+
+.sidebar ul li {
+  padding: 0.8rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.3s;
+}
+
+.sidebar ul li:hover {
+  background-color: #d54b40;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  background: #f7f7f7;
+  overflow-y: auto;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-bar {
+  padding: 0.5rem;
+  width: 200px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.balance-section {
+  display: flex;
+  margin-top: 1.5rem;
+  gap: 2rem;
+}
+
+.balance-card {
+  background-color: #f46354;
+  color: white;
+  padding: 1rem;
+  border-radius: 10px;
+  width: 250px;
+}
+
+.chart-placeholder {
+  background: white;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  width: 200px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transactions-section {
+  margin-top: 2rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+thead {
+  background: #f46354;
+  color: white;
+}
+
+td, th {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
 }
