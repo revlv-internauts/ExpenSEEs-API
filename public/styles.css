@@ -694,3 +694,50 @@ tbody tr:hover {
   z-index: 1000;
 }
 
+/* Existing styles remain, add these at the end */
+
+/* Enhance Expenses Tab Table */
+#expenses table {
+    background: linear-gradient(135deg, #ffe6e6 0%, #ffffff 100%); /* Light orange to white gradient */
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#expenses thead {
+    background: linear-gradient(90deg, #ff5722, #ff8a50); /* Vibrant orange to soft orange gradient */
+    color: white;
+    font-weight: 600;
+}
+
+#expenses tbody tr {
+    transition: background 0.2s ease;
+}
+
+#expenses tbody tr:hover {
+    background: #fff3f0; /* Very light peach hover */
+}
+
+/* Group Header and Separator */
+#expenses tbody tr[style*="background: linear-gradient"] {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#expenses tbody tr[style*="height: 0.5rem"] {
+    padding: 0; /* Remove padding for clean separator */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #expenses table {
+        font-size: 0.9rem;
+    }
+    #expenses tbody tr[style*="background: linear-gradient"] {
+        font-size: 0.9rem;
+    }
+    .expenses-tab .table-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

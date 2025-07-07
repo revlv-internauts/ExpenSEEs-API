@@ -292,19 +292,77 @@ function updateExpenseTable() {
     tbody.innerHTML = "";
 
     const sortedExpenses = getSortedExpenses();
+    const sortValue = document.getElementById("sortExpense")?.value || "date";
 
-    sortedExpenses.forEach(exp => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${exp.user.username || 'Unknown'}</td>
-            <td>${exp.category || ''}</td>
-            <td>₱${exp.amount || 0}</td>
-            <td>${exp.dateOfTransaction || ''}</td>
-            <td>${exp.remarks || ''}</td>
-            <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
-        `;
-        tbody.appendChild(row);
-    });
+    if (sortValue === "amount") {
+        // Display amount sort as a flat list (highest to lowest)
+        sortedExpenses.forEach(exp => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${exp.user.username || 'Unknown'}</td>
+                <td>${exp.category || ''}</td>
+                <td>₱${exp.amount || 0}</td>
+                <td>${exp.dateOfTransaction || ''}</td>
+                <td>${exp.remarks || ''}</td>
+                <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+    } else {
+        // Function to group expenses based on sort value (for date, user, category)
+        const groupExpenses = (expenses, key) => {
+            const groups = {};
+            expenses.forEach(exp => {
+                let groupKey;
+                switch (key) {
+                    case "date":
+                        groupKey = exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date';
+                        break;
+                    case "user":
+                        groupKey = exp.user?.username || 'Unknown';
+                        break;
+                    case "category":
+                        groupKey = exp.category || 'Uncategorized';
+                        break;
+                }
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(exp);
+            });
+            return groups;
+        };
+
+        // Group expenses based on the sort value
+        const groupedExpenses = groupExpenses(sortedExpenses, sortValue);
+
+        // Iterate over grouped items
+        Object.keys(groupedExpenses).sort().forEach((groupKey, index) => {
+            // Add group header
+            const headerRow = document.createElement("tr");
+            headerRow.innerHTML = `<td colspan="6" style="background: linear-gradient(90deg, #ffe6e6, #ffffff); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffd1c5;">${groupKey}</td>`;
+            tbody.appendChild(headerRow);
+
+            // Add expense rows for this group
+            groupedExpenses[groupKey].forEach(exp => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${exp.user.username || 'Unknown'}</td>
+                    <td>${exp.category || ''}</td>
+                    <td>₱${exp.amount || 0}</td>
+                    <td>${exp.dateOfTransaction || ''}</td>
+                    <td>${exp.remarks || ''}</td>
+                    <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Add separator after each group except the last one
+            if (index < Object.keys(groupedExpenses).length - 1) {
+                const separatorRow = document.createElement("tr");
+                separatorRow.innerHTML = `<td colspan="6" style="height: 0.5rem; background: linear-gradient(to right, #ffd1c5, #ffffff); border-bottom: 1px solid #ffd1c5;"></td>`;
+                tbody.appendChild(separatorRow);
+            }
+        });
+    }
 }
 
 function getSortedExpenses() {
