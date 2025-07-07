@@ -7,6 +7,7 @@ import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.exception.UnauthorizedAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -54,6 +55,11 @@ public class ExpenseService {
     public List<Expense> getAllExpenses() {
         User user = userRepository.findByUsername(getCurrentUsername());
         return expenseRepository.findAllByUser(user);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Expense> getAllExpensesForAdmin() {
+        return expenseRepository.findAll();
     }
 
     public double getTotalExpenseAmount() {

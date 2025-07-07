@@ -287,8 +287,338 @@ tbody tr:hover {
 
 .toggle-password {
   position: absolute;
-  right: 30px;
+  right: 40px;
   top: 13px;
   cursor: pointer;
   font-size: 1rem;
 }
+
+/* === View User Modal === */
+.user-popup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+
+.popup-card {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 15px;
+  width: 350px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.popup-card h3 {
+  margin-bottom: 1rem;
+  color: #f46354;
+}
+
+.popup-card p {
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.popup-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.popup-actions button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.popup-actions button:first-child {
+  background-color: #f46354;
+  color: white;
+}
+
+.popup-actions button:last-child {
+  background-color: #eee;
+  color: #333;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.confirm-delete {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.confirm-delete h3 {
+  margin-bottom: 1rem;
+  color: #f46354;
+}
+
+.confirm-delete .popup-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.confirm-delete .delete-btn {
+  background-color: #f46354;
+  color: white;
+}
+
+.confirm-delete .cancel-btn {
+  background-color: #eee;
+}
+
+/* === User Details Popup === */
+.user-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.popup-card {
+  background-color: #fff;
+  padding: 2rem 2.5rem;
+  border-radius: 15px;
+  width: 350px;
+  max-width: 90%;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s ease;
+  text-align: left;
+}
+
+.popup-card h3 {
+  margin-bottom: 1rem;
+  color: #f46354;
+  text-align: center;
+}
+
+.popup-card p {
+  margin: 0.6rem 0;
+  font-size: 0.95rem;
+}
+
+.popup-actions {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.popup-actions button {
+  padding: 0.5rem 1rem;
+  margin: 0 0.4rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.popup-actions button:first-child {
+  background-color: #f46354;
+  color: white;
+}
+
+.popup-actions button:last-child {
+  background-color: #ddd;
+  color: black;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* === Search Input === */
+.table-actions input[type="text"] {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+/* === Search Bar & Table Actions === */
+.search-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.search-bar input {
+  padding: 8px;
+  width: 200px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.search-button {
+  background: #f46354;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.search-button img.icon {
+  width: 18px;
+  height: 18px;
+}
+
+.search-bar button:last-child {
+  background-color: #111;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.search-bar button:last-child:hover {
+  background-color: #333;
+}
+
+/* === User Popup === */
+.user-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 3000;
+}
+
+.popup-card {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 12px;
+  width: 350px;
+  max-width: 90%;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s ease;
+}
+
+.popup-card h3 {
+  margin-top: 0;
+  font-size: 20px;
+  text-align: center;
+  color: #f46354;
+}
+
+.popup-card p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
+.popup-actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.popup-actions button {
+  margin: 0 8px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.popup-actions button:first-child {
+  background-color: #f46354;
+  color: white;
+}
+
+.popup-actions button:last-child {
+  background-color: #ccc;
+  color: black;
+}
+
+.search-container {
+  position: relative;
+  width: 100px;
+  margin-bottom: 10px;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search-container {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.search-container .search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  color: #444;
+}
+
+.add-user-btn {
+  padding: 10px 16px;
+  background-color: #f46354;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-user-btn:hover {
+  background-color: #d84e44;
+}
+
+

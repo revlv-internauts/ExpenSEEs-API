@@ -5,7 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .status-badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+        }
+        .badge-pending { background: #f0ad4e; }
+        .badge-approved { background: #5cb85c; }
+        .badge-denied { background: #d9534f; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: #fff;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            opacity: 0;
+            animation: fadeInOut 4s forwards;
+            z-index: 3000;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .user-details {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .modal-confirm {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .modal-confirm-content {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.25);
+        }
+
+        .modal-confirm-content button {
+            margin: 0 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .confirm-delete { background-color: #d9534f; color: white; }
+        .cancel-delete { background-color: #ccc; }
+
+        .user-row {
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 <div id="login-screen" class="login-bg">
@@ -14,7 +93,9 @@
         <input type="text" placeholder="Username" id="username">
         <div class="password-wrapper">
             <input type="password" placeholder="Password" id="password">
-            <span class="toggle-password" onclick="togglePassword('password', this)">👁️</span>
+            <span class="toggle-password" onclick="togglePassword('password', this)">
+                <i class="fa-solid fa-eye-slash"></i>
+            </span>
         </div>
         <button onclick="login()">Login</button>
     </div>
@@ -57,20 +138,30 @@
             </div>
         </div>
 
-        <div id="users" class="tab">
-            <div class="table-header">
-                <h3>User List</h3>
-                <div class="table-actions">
-                    <button onclick="openUserModal()">Add User</button>
+        <div id="users" class="tab users-tab">
+            <div class="users-header">
+                <div class="search-container">
+                    <input
+                            id="searchInput"
+                            type="text"
+                            placeholder="Search users..."
+                            oninput="filterUsers()"
+                    />
                 </div>
+                <button class="add-user-btn" onclick="openUserModal()">+ Add User</button>
             </div>
+
+
+            <p id="no-users-message" style="display:none; color: red; margin-top: 10px;">No users found.</p>
+
             <table>
                 <thead>
-                <tr><th>ID</th><th>Username</th><th>Email</th><th>Password</th><th>Actions</th></tr>
+                <tr><th>Username</th><th>Email</th><th>Actions</th></tr>
                 </thead>
                 <tbody id="users-table"></tbody>
             </table>
         </div>
+
 
         <div id="budgets" class="tab">
             <div class="table-header">
@@ -105,13 +196,47 @@
         <input type="email" id="newEmail" placeholder="Email">
         <div class="password-wrapper">
             <input type="password" id="newPassword" placeholder="Password">
-            <span class="toggle-password" onclick="togglePassword('newPassword', this)">👁️</span>
+            <span class="toggle-password" onclick="togglePassword('newPassword', this)">
+                <i class="fa-solid fa-eye-slash"></i>
+            </span>
         </div>
         <button onclick="createUser()">Add</button>
         <button onclick="closeUserModal()">Cancel</button>
     </div>
 </div>
 
+<div id="confirmModal" class="modal-confirm">
+    <div class="modal-confirm-content">
+        <p>Are you sure you want to delete this user?</p>
+        <button class="confirm-delete" onclick="confirmDeleteUser()">Delete</button>
+        <button class="cancel-delete" onclick="cancelDeleteUser()">Cancel</button>
+    </div>
+</div>
+
+<div id="toast" class="toast" style="display: none"></div>
+
 <script src="script.js"></script>
+<script>
+    function togglePassword(id, iconSpan) {
+        const input = document.getElementById(id);
+        const icon = iconSpan.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 4000);
+    }
+</script>
 </body>
 </html>

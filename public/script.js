@@ -2,31 +2,30 @@ let users = [];
 let expenses = [];
 let budgetRequests = [];
 let token = null;
+let selectedUserIndex = null;
+
+// =================== AUTH ===================
 
 async function login() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
   try {
-    console.log("Attempting login with:", { username, password });
     const response = await fetch("http://localhost:8080/api/auth/sign-in", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usernameOrEmail: username, password })
     });
-    console.log("Response status:", response.status, "OK:", response.ok);
+
     const data = await response.json();
-    console.log("Response data:", data);
-    if (response.ok) {
+    if (response.ok && data.access_token) {
       token = data.access_token;
-      if (!token) throw new Error("Token not found in response");
       document.getElementById("login-screen").style.display = "none";
       document.getElementById("dashboard").style.display = "flex";
       updateDashboard();
     } else {
-      alert(data.error || `Login failed with status ${response.status}`);
+      alert(data.error || "Login failed");
     }
   } catch (error) {
-    console.error("Login error:", error.message, error.stack);
     alert("Network error: " + error.message);
   }
 }
@@ -36,6 +35,8 @@ function logout() {
   document.getElementById("dashboard").style.display = "none";
   document.getElementById("login-screen").style.display = "flex";
 }
+
+// =================== UI CONTROL ===================
 
 function showTab(tabId) {
   const tabs = document.querySelectorAll(".tab");
@@ -50,22 +51,74 @@ function toggleSidebar() {
   content.classList.toggle("content-shift");
 }
 
-function openUserModal() {
-  document.getElementById("userModal").style.display = "flex";
-}
-function closeUserModal() {
-  document.getElementById("userModal").style.display = "none";
-}
-
 function togglePassword(id, icon) {
   const input = document.getElementById(id);
   input.type = input.type === "password" ? "text" : "password";
 }
 
+// =================== USER MODAL ===================
+
+function openUserModal() {
+  document.getElementById("userModal").style.display = "flex";
+}
+
+function closeUserModal() {
+  document.getElementById("userModal").style.display = "none";
+}
+
+// =================== DASHBOARD UPDATE ===================
+
+async function updateDashboard() {
+  if (!token) return;
+
+  try {
+    // USERS
+    const usersRes = await fetch("http://localhost:8080/api/admin/users", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const usersData = await usersRes.json();
+    if (usersRes.ok) users = usersData;
+
+    // EXPENSES
+    const expensesRes = await fetch("http://localhost:8080/api/expenses/all", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const expensesData = await expensesRes.json();
+    if (expensesRes.ok) expenses = expensesData;
+
+    // BUDGET REQUESTS
+    const budgetRes = await fetch("http://localhost:8080/api/budgets", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const budgetData = await budgetRes.json();
+    if (budgetRes.ok) {
+      budgetRequests = budgetData.map(b => ({
+        budgetId: b.budgetId,
+        username: b.user?.username || "Unknown",
+        amount: b.total || 0,
+        status: b.status || "PENDING"
+      }));
+    }
+
+    // UPDATE UI
+    document.querySelector(".balance-card h1").textContent = `₱${expenses.reduce((sum, e) => sum + (e.amount || 0), 0)}`;
+    document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
+    updateChart();
+    updateUserTable();
+    updateBudgetTable();
+    updateExpenseTable();
+  } catch (error) {
+    alert("Dashboard error: " + error.message);
+  }
+}
+
+// =================== USER FUNCTIONS ===================
+
 async function createUser() {
   const username = document.getElementById("newUsername").value;
   const email = document.getElementById("newEmail").value;
   const password = document.getElementById("newPassword").value;
+
   if (!username || !email || !password) return alert("Fill all fields");
 
   try {
@@ -82,9 +135,9 @@ async function createUser() {
       closeUserModal();
       updateDashboard();
     } else {
-      alert(data.error || "Failed to create user");
+      alert(data.error || "Create failed");
     }
-  } catch (error) {
+  } catch {
     alert("Network error");
   }
 }
@@ -96,17 +149,120 @@ async function deleteUser(index) {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });
-    const data = await response.json();
     if (response.ok) {
       users.splice(index, 1);
       updateUserTable();
       updateDashboard();
     } else {
-      alert(data.error || "Failed to delete user");
+      const data = await response.json();
+      alert(data.error || "Delete failed");
     }
-  } catch (error) {
-    alert("Network error");
+  } catch {
+    alert("Delete error");
   }
+}
+
+function updateUserTable() {
+  const tbody = document.getElementById("users-table");
+  tbody.innerHTML = "";
+  const filteredUsers = users.filter(u => u.username?.toLowerCase() !== "admin");
+
+  filteredUsers.forEach((user, index) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${user.username}</td>
+      <td>${user.email}</td>
+      <td><button onclick="showUserDetails(${index})">View</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById("no-users-message").style.display = filteredUsers.length === 0 ? "block" : "none";
+}
+
+function showUserDetails(index) {
+  selectedUserIndex = index;
+  const user = users.filter(u => u.username?.toLowerCase() !== "admin")[index];
+
+  const popup = document.createElement("div");
+  popup.className = "user-popup";
+  popup.innerHTML = `
+    <div class="popup-card">
+      <h3>User Details</h3>
+      <p><strong>ID:</strong> ${user.userId}</p>
+      <p><strong>Username:</strong> ${user.username}</p>
+      <p><strong>Email:</strong> ${user.email}</p>
+      <div class="popup-actions">
+        <button onclick="confirmDeleteUser()">Delete</button>
+        <button onclick="closePopup()">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  popup.onclick = e => { if (e.target === popup) closePopup(); };
+}
+
+function confirmDeleteUser() {
+  if (selectedUserIndex === null) return;
+  if (confirm("Are you sure you want to delete this user?")) {
+    const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
+    const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
+    deleteUser(actualIndex);
+    closePopup();
+  }
+  selectedUserIndex = null;
+}
+
+function closePopup() {
+  const popup = document.querySelector(".user-popup");
+  if (popup) popup.remove();
+  selectedUserIndex = null;
+}
+
+function filterUsers() {
+  const value = document.getElementById("searchInput").value.toLowerCase();
+  const tbody = document.getElementById("users-table");
+  tbody.innerHTML = "";
+
+  const filtered = users.filter(u =>
+    u.username?.toLowerCase().includes(value) ||
+    u.email?.toLowerCase().includes(value)
+  ).filter(u => u.username?.toLowerCase() !== "admin");
+
+  filtered.forEach((user, index) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${user.username}</td>
+      <td>${user.email}</td>
+      <td><button onclick="showUserDetails(${users.findIndex(u => u.userId === user.userId)})">View</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById("no-users-message").style.display = filtered.length === 0 ? "block" : "none";
+}
+
+
+// =================== OTHER TABLES ===================
+
+function updateBudgetTable() {
+  const tbody = document.getElementById("budget-table");
+  tbody.innerHTML = "";
+  budgetRequests.forEach((req, index) => {
+    const row = `<tr><td>${req.budgetId}</td><td>${req.username}</td><td>₱${req.amount}</td><td>${req.status}</td>
+      <td><button onclick="updateRequest(${index}, 'APPROVED')">Approve</button>
+      <button onclick="updateRequest(${index}, 'DENIED')">Deny</button></td></tr>`;
+    tbody.innerHTML += row;
+  });
+}
+
+function updateExpenseTable() {
+  const tbody = document.getElementById("expenses-table");
+  tbody.innerHTML = "";
+  expenses.forEach(exp => {
+    const row = `<tr><td>${exp.expenseId}</td><td>${exp.user?.username || 'Unknown'}</td><td>${exp.category}</td><td>₱${exp.amount}</td><td>${exp.dateOfTransaction}</td><td>${exp.remarks}</td></tr>`;
+    tbody.innerHTML += row;
+  });
 }
 
 async function updateRequest(index, status) {
@@ -120,110 +276,25 @@ async function updateRequest(index, status) {
       },
       body: status
     });
-    const data = await response.json();
     if (response.ok) {
       budgetRequests[index].status = status;
       updateBudgetTable();
     } else {
-      alert(data.error || "Failed to update status");
+      const data = await response.json();
+      alert(data.error || "Status update failed");
     }
-  } catch (error) {
-    alert("Network error");
+  } catch {
+    alert("Update failed");
   }
 }
 
-async function updateDashboard() {
-  if (!token) return;
-
-  try {
-    // Fetch users
-    const usersResponse = await fetch("http://localhost:8080/api/admin/users", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    console.log("Users response status:", usersResponse.status, "OK:", usersResponse.ok);
-    const usersData = await usersResponse.json();
-    console.log("Users data:", usersData);
-    if (usersResponse.ok) {
-      users = usersData;
-    } else {
-      alert(usersData.error || "Failed to load users");
-    }
-
-    // Fetch expenses
-    const expensesResponse = await fetch("http://localhost:8080/api/expenses", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const expensesData = await expensesResponse.json();
-    if (expensesResponse.ok) {
-      expenses = expensesData;
-    } else {
-      alert(expensesData.error || "Failed to load expenses");
-    }
-
-    // Fetch budgets
-    const budgetsResponse = await fetch("http://localhost:8080/api/budgets", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const budgetsData = await budgetsResponse.json();
-    if (budgetsResponse.ok) {
-      budgetRequests = budgetsData.map(b => ({
-        budgetId: b.budgetId,
-        username: b.user?.username || "Unknown",
-        amount: b.total || 0,
-        status: b.status || "PENDING"
-      })) || [];
-    } else {
-      alert(budgetsData.error || "Failed to load budgets");
-    }
-
-    // Update dashboard
-    document.querySelector(".balance-card h1").textContent = `₱${expenses.reduce((acc, e) => acc + (e.amount || 0), 0)}`;
-    document.querySelectorAll(".balance-card h1")[1].textContent = users.length || 0;
-    updateChart();
-    updateUserTable();
-    updateBudgetTable();
-    updateExpenseTable();
-  } catch (error) {
-    console.error("Dashboard update error:", error.message, error.stack);
-    alert("Network error: " + error.message);
-  }
-}
-
-function updateUserTable() {
-  const tbody = document.getElementById("users-table");
-  tbody.innerHTML = "";
-  users.forEach((user, index) => {
-    const row = `<tr><td>${user.userId || ''}</td><td>${user.username || ''}</td><td>${user.email || ''}</td><td>********</td>
-      <td><button onclick="deleteUser(${index})">Delete</button></td></tr>`;
-    tbody.innerHTML += row;
-  });
-}
-
-function updateBudgetTable() {
-  const tbody = document.getElementById("budget-table");
-  tbody.innerHTML = "";
-  budgetRequests.forEach((req, index) => {
-    const row = `<tr><td>${req.budgetId || ''}</td><td>${req.username || ''}</td><td>₱${req.amount || 0}</td><td>${req.status || ''}</td>
-      <td><button onclick="updateRequest(${index}, 'APPROVED')">Approve</button>
-      <button onclick="updateRequest(${index}, 'DENIED')">Deny</button></td></tr>`;
-    tbody.innerHTML += row;
-  });
-}
-
-function updateExpenseTable() {
-  const tbody = document.getElementById("expenses-table");
-  tbody.innerHTML = "";
-  expenses.forEach(exp => {
-    const row = `<tr><td>${exp.expenseId || ''}</td><td>${exp.user?.userId || ''}</td><td>${exp.category || ''}</td><td>₱${exp.amount || 0}</td><td>${exp.dateOfTransaction || ''}</td><td>${exp.remarks || ''}</td></tr>`;
-    tbody.innerHTML += row;
-  });
-}
+// =================== CHART ===================
 
 let pieChart;
 function updateChart() {
   const ctx = document.getElementById("expenseChart").getContext("2d");
   const categories = [...new Set(expenses.map(e => e.category))];
-  const amounts = categories.map(cat => expenses.filter(e => e.category === cat).reduce((acc, e) => acc + (e.amount || 0), 0));
+  const amounts = categories.map(cat => expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0));
 
   if (pieChart) pieChart.destroy();
   pieChart = new Chart(ctx, {
