@@ -64,6 +64,12 @@ function openUserModal() {
 
 function closeUserModal() {
   document.getElementById("userModal").style.display = "none";
+  document.getElementById("newUsername").value = "";
+  document.getElementById("newEmail").value = "";
+  document.getElementById("newPassword").value = "";
+  const errorEl = document.getElementById("addUserError");
+  errorEl.textContent = "";
+  errorEl.style.display = "none";
 }
 
 // =================== DASHBOARD UPDATE ===================
@@ -158,8 +164,6 @@ async function createUser() {
   }
 }
 
-
-
 async function deleteUser(index) {
   try {
     const user = users[index];
@@ -210,45 +214,57 @@ function showUserDetails(index) {
       <p><strong>ID:</strong> ${user.userId}</p>
       <p><strong>Username:</strong> ${user.username}</p>
       <p><strong>Email:</strong> ${user.email}</p>
-      <div class="popup-actions">
-        <button onclick="confirmDeleteUser()">Delete</button>
-        <button onclick="closePopup()">Close</button>
+      <div class="popup-actions" id="userPopupActions-${index}">
+        <button>Delete</button>
+        <button>Close</button>
       </div>
     </div>
   `;
   document.body.appendChild(popup);
-  popup.onclick = e => { if (e.target === popup) closePopup(); };
+  popup.onclick = e => { if (e.target === popup) closePopup(popup); };
+
+  // Add event listeners after the popup is added to the DOM
+  const actionsDiv = document.getElementById(`userPopupActions-${index}`);
+  actionsDiv.querySelector("button:nth-child(1)").addEventListener("click", () => confirmDeleteUser(popup));
+  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => closePopup(popup));
 }
 
-function confirmDeleteUser() {
+function confirmDeleteUser(popup) {
   const confirmPopup = document.createElement("div");
   confirmPopup.className = "user-popup";
   confirmPopup.innerHTML = `
     <div class="popup-card">
       <h3>Confirm Deletion</h3>
       <p>Are you sure you want to delete this user?</p>
-      <div class="popup-actions">
-        <button id="confirmDeleteBtn" style="background-color: red; color: white;">Yes, Delete</button>
-        <button onclick="closePopup()">Cancel</button>
+      <div class="popup-actions" id="confirmPopupActions">
+        <button style="background-color: red; color: white;">Yes, Delete</button>
+        <button>Cancel</button>
       </div>
     </div>
   `;
   document.body.appendChild(confirmPopup);
+  confirmPopup.onclick = e => { if (e.target === confirmPopup) closePopup(confirmPopup); };
 
-  document.getElementById("confirmDeleteBtn").onclick = () => {
+  // Add event listeners after the popup is added to the DOM
+  const actionsDiv = document.getElementById("confirmPopupActions");
+  actionsDiv.querySelector("button:nth-child(1)").addEventListener("click", () => {
     const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
     const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
     deleteUser(actualIndex);
-    closePopup();
-  };
+    closePopup(confirmPopup);
+  });
+  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => closePopup(confirmPopup));
 }
 
-
-function closePopup() {
-  document.querySelectorAll(".user-popup").forEach(el => el.remove());
-  selectedUserIndex = null;
+function closePopup(popupElement = null) {
+    if (popupElement) {
+        popupElement.remove();
+    } else {
+        document.querySelectorAll(".user-popup").forEach(el => el.remove());
+        document.getElementById("expenseImagePopup").style.display = "none";
+    }
+    selectedUserIndex = null;
 }
-
 
 function filterUsers() {
   const value = document.getElementById("searchInput").value.toLowerCase();
@@ -272,7 +288,6 @@ function filterUsers() {
 
   document.getElementById("no-users-message").style.display = filtered.length === 0 ? "block" : "none";
 }
-
 
 // =================== OTHER TABLES ===================
 
@@ -370,13 +385,13 @@ function getSortedExpenses() {
   return [...expenses].sort((a, b) => {
     switch (sortValue) {
       case "amount":
-        return (b.amount || 0) - (a.amount || 0);
+        return (b.amount || 0) - (a.amount || 0); // Highest to lowest
       case "category":
         return (a.category || '').localeCompare(b.category || '');
       case "user":
         return (a.user?.username || '').localeCompare(b.user?.username || '');
       default: // date
-        return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
+        return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction); // Latest to oldest
     }
   });
 }
@@ -407,21 +422,15 @@ function showExpenseImage(expenseId) {
     }
 }
 
-function closePopup() {
-  const popup = document.getElementById("expenseImagePopup");
-  popup.style.display = "none";
+function closePopup(popupElement = null) {
+    if (popupElement) {
+        popupElement.remove();
+    } else {
+        document.querySelectorAll(".user-popup").forEach(el => el.remove());
+        document.getElementById("expenseImagePopup").style.display = "none";
+    }
+    selectedUserIndex = null;
 }
-
-function closeUserModal() {
-  document.getElementById("userModal").style.display = "none";
-  document.getElementById("newUsername").value = "";
-  document.getElementById("newEmail").value = "";
-  document.getElementById("newPassword").value = "";
-  const errorEl = document.getElementById("addUserError");
-  errorEl.textContent = "";
-  errorEl.style.display = "none";
-}
-
 
 async function updateRequest(index, status) {
   try {
