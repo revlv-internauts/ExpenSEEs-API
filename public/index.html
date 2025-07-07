@@ -198,13 +198,10 @@
             </div>
 
             <!-- Popup Viewer -->
-            <div id="expenseImagePopup" class="user-popup" style="display: none">
-                <div class="popup-card">
-                    <h3>Expense Image</h3>
-                    <img id="popup-expense-img" src="" alt="Expense Image" style="max-width: 100%; max-height: 300px;">
-                    <div class="popup-actions">
-                        <button onclick="closePopup()">Close</button>
-                    </div>
+            <div id="expenseImagePopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
+                <div style="background: white; padding: 20px; border-radius: 5px;">
+                    <img id="popup-expense-img" style="max-width: 100%; max-height: 80vh;" alt="Expense Receipt">
+                    <button onclick="closePopup()" style="margin-top: 10px;">Close</button>
                 </div>
             </div>
         </div>

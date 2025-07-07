@@ -288,23 +288,23 @@ function updateBudgetTable() {
 }
 
 function updateExpenseTable() {
-  const tbody = document.getElementById("expenses-table");
-  tbody.innerHTML = "";
+    const tbody = document.getElementById("expenses-table");
+    tbody.innerHTML = "";
 
-  const sortedExpenses = getSortedExpenses();
+    const sortedExpenses = getSortedExpenses();
 
-  sortedExpenses.forEach(exp => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${exp.user?.username || 'Unknown'}</td>
-      <td>${exp.category || ''}</td>
-      <td>₱${exp.amount || 0}</td>
-      <td>${exp.dateOfTransaction || ''}</td>
-      <td>${exp.remarks || ''}</td>
-      <td><button onclick="showExpenseImage('${exp.imageUrl || ''}')">View</button></td>
-    `;
-    tbody.appendChild(row);
-  });
+    sortedExpenses.forEach(exp => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${exp.user.username || 'Unknown'}</td>
+            <td>${exp.category || ''}</td>
+            <td>₱${exp.amount || 0}</td>
+            <td>${exp.dateOfTransaction || ''}</td>
+            <td>${exp.remarks || ''}</td>
+            <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
+        `;
+        tbody.appendChild(row);
+    });
 }
 
 function getSortedExpenses() {
@@ -323,11 +323,30 @@ function getSortedExpenses() {
   });
 }
 
-function showExpenseImage(imageUrl) {
-  const popup = document.getElementById("expenseImagePopup");
-  const img = document.getElementById("popup-expense-img");
-  img.src = imageUrl;
-  popup.style.display = "flex";
+function showExpenseImage(expenseId) {
+    const popup = document.getElementById("expenseImagePopup");
+    const img = document.getElementById("popup-expense-img");
+    if (expenseId) {
+        console.log("Fetching image for expense ID:", expenseId, "with token:", token);
+        fetch(`http://localhost:8080/api/expenses/${expenseId}/images?index=0`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
+            return response.blob();
+        })
+        .then(blob => {
+            img.src = URL.createObjectURL(blob);
+            popup.style.display = "flex";
+        })
+        .catch(error => {
+            console.error("Error loading image for expense ID " + expenseId + ":", error);
+            alert("Failed to load image for expense ID " + expenseId + ": " + error.message);
+        });
+    } else {
+        img.src = '';
+        popup.style.display = "flex";
+    }
 }
 
 function closePopup() {

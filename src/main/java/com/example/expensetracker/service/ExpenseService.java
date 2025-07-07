@@ -107,8 +107,14 @@ public class ExpenseService {
 
     public Expense getExpenseById(Long expenseId) {
         Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new IllegalArgumentException("Expense not found"));
-        checkExpenseOwnership(expense);
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found with ID: " + expenseId));
+        String currentUsername = getCurrentUsername();
+        User currentUser = userRepository.findByUsername(currentUsername);
+        if (!expense.getUser().getUserId().equals(currentUser.getUserId()) &&
+                !SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                        .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new UnauthorizedAccessException("Unauthorized access to expense");
+        }
         return expense;
     }
 
