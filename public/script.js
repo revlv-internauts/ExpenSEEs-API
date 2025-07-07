@@ -290,10 +290,49 @@ function updateBudgetTable() {
 function updateExpenseTable() {
   const tbody = document.getElementById("expenses-table");
   tbody.innerHTML = "";
-  expenses.forEach(exp => {
-    const row = `<tr><td>${exp.expenseId}</td><td>${exp.user?.username || 'Unknown'}</td><td>${exp.category}</td><td>₱${exp.amount}</td><td>${exp.dateOfTransaction}</td><td>${exp.remarks}</td></tr>`;
-    tbody.innerHTML += row;
+
+  const sortedExpenses = getSortedExpenses();
+
+  sortedExpenses.forEach(exp => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${exp.user?.username || 'Unknown'}</td>
+      <td>${exp.category || ''}</td>
+      <td>₱${exp.amount || 0}</td>
+      <td>${exp.dateOfTransaction || ''}</td>
+      <td>${exp.remarks || ''}</td>
+      <td><button onclick="showExpenseImage('${exp.imageUrl || ''}')">View</button></td>
+    `;
+    tbody.appendChild(row);
   });
+}
+
+function getSortedExpenses() {
+  const sortValue = document.getElementById("sortExpense")?.value || "date";
+  return [...expenses].sort((a, b) => {
+    switch (sortValue) {
+      case "amount":
+        return (b.amount || 0) - (a.amount || 0);
+      case "category":
+        return (a.category || '').localeCompare(b.category || '');
+      case "user":
+        return (a.user?.username || '').localeCompare(b.user?.username || '');
+      default: // date
+        return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
+    }
+  });
+}
+
+function showExpenseImage(imageUrl) {
+  const popup = document.getElementById("expenseImagePopup");
+  const img = document.getElementById("popup-expense-img");
+  img.src = imageUrl;
+  popup.style.display = "flex";
+}
+
+function closePopup() {
+  const popup = document.getElementById("expenseImagePopup");
+  popup.style.display = "none";
 }
 
 function closeUserModal() {

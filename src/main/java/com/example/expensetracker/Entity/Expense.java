@@ -1,6 +1,7 @@
 package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
@@ -30,9 +31,9 @@ public class Expense {
 
     private String remarks;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore
+    @JsonManagedReference // Replace @JsonIgnore with @JsonManagedReference
     private User user;
 
     private LocalDateTime createdAt;

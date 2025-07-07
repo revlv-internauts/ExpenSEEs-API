@@ -176,15 +176,37 @@
         </div>
 
         <div id="expenses" class="tab">
-            <div class="table-header">
-                <h3>Expenses</h3>
+            <div class="expenses-tab">
+                <div class="table-header">
+                    <h3>Expenses</h3>
+                    <div class="table-actions">
+                        <select id="sortExpense" onchange="updateExpenseTable()">
+                            <option value="date">Sort by Date</option>
+                            <option value="amount">Sort by Amount (High to Low)</option>
+                            <option value="category">Sort by Category</option>
+                            <option value="user">Sort by User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                    <tr><th>Username</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Image</th></tr>
+                    </thead>
+                    <tbody id="expenses-table"></tbody>
+                </table>
             </div>
-            <table>
-                <thead>
-                <tr><th>ID</th><th>User ID</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th></tr>
-                </thead>
-                <tbody id="expenses-table"></tbody>
-            </table>
+
+            <!-- Popup Viewer -->
+            <div id="expenseImagePopup" class="user-popup" style="display: none">
+                <div class="popup-card">
+                    <h3>Expense Image</h3>
+                    <img id="popup-expense-img" src="" alt="Expense Image" style="max-width: 100%; max-height: 300px;">
+                    <div class="popup-actions">
+                        <button onclick="closePopup()">Close</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
