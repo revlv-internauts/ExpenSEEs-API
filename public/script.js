@@ -115,11 +115,18 @@ async function updateDashboard() {
 // =================== USER FUNCTIONS ===================
 
 async function createUser() {
-  const username = document.getElementById("newUsername").value;
-  const email = document.getElementById("newEmail").value;
+  const username = document.getElementById("newUsername").value.trim();
+  const email = document.getElementById("newEmail").value.trim();
   const password = document.getElementById("newPassword").value;
+  const errorEl = document.getElementById("addUserError");
+  errorEl.style.display = "none";
+  errorEl.textContent = "";
 
-  if (!username || !email || !password) return alert("Fill all fields");
+  if (!username || !email || !password) {
+    errorEl.textContent = "Please fill all fields.";
+    errorEl.style.display = "block";
+    return;
+  }
 
   try {
     const response = await fetch("http://localhost:8080/api/admin/users", {
@@ -130,17 +137,28 @@ async function createUser() {
       },
       body: JSON.stringify({ username, email, password })
     });
+
     const data = await response.json();
+
     if (response.ok) {
       closeUserModal();
       updateDashboard();
     } else {
-      alert(data.error || "Create failed");
+      const msg = data?.error || "Failed to create user";
+      if (msg.includes("already exists")) {
+        errorEl.textContent = "Username or email already exists.";
+      } else {
+        errorEl.textContent = msg;
+      }
+      errorEl.style.display = "block";
     }
-  } catch {
-    alert("Network error");
+  } catch (error) {
+    errorEl.textContent = "Network error. Please try again.";
+    errorEl.style.display = "block";
   }
 }
+
+
 
 async function deleteUser(index) {
   try {
@@ -203,21 +221,34 @@ function showUserDetails(index) {
 }
 
 function confirmDeleteUser() {
-  if (selectedUserIndex === null) return;
-  if (confirm("Are you sure you want to delete this user?")) {
+  const confirmPopup = document.createElement("div");
+  confirmPopup.className = "user-popup";
+  confirmPopup.innerHTML = `
+    <div class="popup-card">
+      <h3>Confirm Deletion</h3>
+      <p>Are you sure you want to delete this user?</p>
+      <div class="popup-actions">
+        <button id="confirmDeleteBtn" style="background-color: red; color: white;">Yes, Delete</button>
+        <button onclick="closePopup()">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(confirmPopup);
+
+  document.getElementById("confirmDeleteBtn").onclick = () => {
     const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
     const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
     deleteUser(actualIndex);
     closePopup();
-  }
+  };
+}
+
+
+function closePopup() {
+  document.querySelectorAll(".user-popup").forEach(el => el.remove());
   selectedUserIndex = null;
 }
 
-function closePopup() {
-  const popup = document.querySelector(".user-popup");
-  if (popup) popup.remove();
-  selectedUserIndex = null;
-}
 
 function filterUsers() {
   const value = document.getElementById("searchInput").value.toLowerCase();
@@ -264,6 +295,17 @@ function updateExpenseTable() {
     tbody.innerHTML += row;
   });
 }
+
+function closeUserModal() {
+  document.getElementById("userModal").style.display = "none";
+  document.getElementById("newUsername").value = "";
+  document.getElementById("newEmail").value = "";
+  document.getElementById("newPassword").value = "";
+  const errorEl = document.getElementById("addUserError");
+  errorEl.textContent = "";
+  errorEl.style.display = "none";
+}
+
 
 async function updateRequest(index, status) {
   try {

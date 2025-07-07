@@ -293,6 +293,11 @@ tbody tr:hover {
   font-size: 1rem;
 }
 
+.toggle-password:hover {
+  color: #000;
+}
+
+
 /* === View User Modal === */
 .user-popup {
   display: flex;
@@ -378,6 +383,16 @@ tbody tr:hover {
 
 .confirm-delete .cancel-btn {
   background-color: #eee;
+}
+
+/* Reuse existing modal style, or if needed: */
+#confirmDeleteModal .modal-content {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 15px;
+  background-color: white;
+  box-shadow: 0 0 20px rgba(0,0,0,0.25);
+  width: 300px;
 }
 
 /* === User Details Popup === */
@@ -621,4 +636,27 @@ tbody tr:hover {
   background-color: #d84e44;
 }
 
+.error-text {
+  color: red;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  text-align: left;
+}
 
+.popup-card h3 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.popup-card p {
+  margin: 10px 0;
+}
+
+.popup-actions button {
+  padding: 8px 14px;
+  margin-left: 10px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
