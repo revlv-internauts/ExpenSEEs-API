@@ -297,20 +297,82 @@ function filterUsers() {
 function updateBudgetTable() {
     const tbody = document.getElementById("budget-table");
     tbody.innerHTML = "";
-    budgetRequests.forEach((req, index) => {
-        const row = document.createElement("tr");
-        const statusClass = req.status === "PENDING" ? "badge-pending" :
-                          req.status === "APPROVED" ? "badge-approved" :
-                          "badge-denied";
-        row.innerHTML = `
-            <td>${req.username}</td>
-            <td>${req.name}</td>
-            <td>₱${req.amount.toFixed(2)}</td>
-            <td><span class="status-badge ${statusClass}">${req.status}</span></td>
-            <td><button onclick="showBudgetDetails(${index})">View</button></td>
-        `;
-        tbody.appendChild(row);
-    });
+
+    const sortValue = document.getElementById("sortBudget")?.value || "username";
+
+    if (sortValue === "amount") {
+        // Flat list sorted by amount (highest to lowest)
+        const sortedBudgets = [...budgetRequests].sort((a, b) => (b.amount || 0) - (a.amount || 0));
+        sortedBudgets.forEach((req, index) => {
+            const row = document.createElement("tr");
+            const statusClass = req.status === "PENDING" ? "badge-pending" :
+                              req.status === "APPROVED" ? "badge-approved" :
+                              "badge-denied";
+            row.innerHTML = `
+                <td>${req.username}</td>
+                <td>${req.name}</td>
+                <td>₱${req.amount.toFixed(2)}</td>
+                <td><span class="status-badge ${statusClass}">${req.status}</span></td>
+                <td><button onclick="showBudgetDetails(${index})">View</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+    } else {
+        // Grouped sorting for username, request, or status
+        const groupBudgets = (budgets, key) => {
+            const groups = {};
+            budgets.forEach(req => {
+                let groupKey;
+                switch (key) {
+                    case "username":
+                        groupKey = req.username || 'Unknown';
+                        break;
+                    case "name":
+                        groupKey = req.name || 'No Name';
+                        break;
+                    case "status":
+                        groupKey = req.status || 'PENDING';
+                        break;
+                }
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(req);
+            });
+            return groups;
+        };
+
+        const groupedBudgets = groupBudgets(budgetRequests, sortValue);
+
+        Object.keys(groupedBudgets).sort().forEach((groupKey, index) => {
+            // Add group header
+            const headerRow = document.createElement("tr");
+            headerRow.innerHTML = `<td colspan="5" style="background: linear-gradient(90deg, #ffe6e6, #ffffff); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffd1c5;">${groupKey}</td>`;
+            tbody.appendChild(headerRow);
+
+            // Add budget rows for this group
+            groupedBudgets[groupKey].forEach((req, localIndex) => {
+                const globalIndex = budgetRequests.findIndex(b => b.budgetId === req.budgetId);
+                const statusClass = req.status === "PENDING" ? "badge-pending" :
+                                  req.status === "APPROVED" ? "badge-approved" :
+                                  "badge-denied";
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${req.username}</td>
+                    <td>${req.name}</td>
+                    <td>₱${req.amount.toFixed(2)}</td>
+                    <td><span class="status-badge ${statusClass}">${req.status}</span></td>
+                    <td><button onclick="showBudgetDetails(${globalIndex})">View</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Add separator after each group except the last one
+            if (index < Object.keys(groupedBudgets).length - 1) {
+                const separatorRow = document.createElement("tr");
+                separatorRow.innerHTML = `<td colspan="5" style="height: 0.5rem; background: linear-gradient(to right, #ffd1c5, #ffffff); border-bottom: 1px solid #ffd1c5;"></td>`;
+                tbody.appendChild(separatorRow);
+            }
+        });
+    }
 }
 
 function showBudgetDetails(index) {

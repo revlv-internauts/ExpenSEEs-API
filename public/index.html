@@ -164,6 +164,14 @@
         <div id="budgets" class="tab">
             <div class="table-header">
                 <h3>Budget Requests</h3>
+                <div class="table-actions">
+                    <select id="sortBudget" onchange="updateBudgetTable()">
+                        <option value="username">Sort by Username</option>
+                        <option value="name">Sort by Request</option>
+                        <option value="amount">Sort by Amount (High to Low)</option>
+                        <option value="status">Sort by Status</option>
+                    </select>
+                </div>
             </div>
             <table>
                 <thead>
@@ -183,7 +191,7 @@
                 <div class="modal-content popup-card" style="width: 400px; text-align: left; max-height: 70vh; overflow-y: auto;">
                     <span class="close-btn" onclick="closeBudgetPopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
                     <h3>Budget Details</h3>
-                    <div id="budgetDetails"></div> <!-- Removed user-details class -->
+                    <div id="budgetDetails"></div>
                     <div class="popup-actions" style="margin-top: 1.5rem; text-align: center;">
                         <button onclick="approveBudget()" style="background-color: #5cb85c; color: white;">APPROVE</button>
                         <button onclick="denyBudget()" style="background-color: #d9534f; color: white;">DENY</button>
