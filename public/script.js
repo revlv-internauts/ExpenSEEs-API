@@ -4,7 +4,10 @@ let budgetRequests = [];
 let token = null;
 let selectedUserIndex = null;
 let selectedBudgetIndex = null;
-
+let zoomLevel = 1;
+let panX = 0, panY = 0;
+let isDragging = false;
+let startX = 0, startY = 0;
 // =================== AUTH ===================
 
 async function login() {
@@ -590,6 +593,11 @@ function getSortedExpenses() {
 function showExpenseImage(expenseId) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
+    zoomLevel = 1; // Reset zoom
+    panX = 0; panY = 0; // Reset pan
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+    img.style.width = 'auto'; // Reset to natural size, constrained by max-width/max-height
+    img.style.height = 'auto'; // Reset to natural size, constrained by max-width/max-height
     if (expenseId) {
         console.log("Fetching image for expense ID:", expenseId, "with token:", token);
         fetch(`http://localhost:8080/api/expenses/${expenseId}/images?index=0`, {
@@ -602,6 +610,8 @@ function showExpenseImage(expenseId) {
         .then(blob => {
             img.src = URL.createObjectURL(blob);
             popup.style.display = "flex";
+            // Add keyboard listener for this popup instance
+            document.addEventListener('keydown', handleKeyZoom);
         })
         .catch(error => {
             console.error("Error loading image for expense ID " + expenseId + ":", error);
@@ -611,6 +621,86 @@ function showExpenseImage(expenseId) {
         img.src = '';
         popup.style.display = "flex";
     }
+    // Add drag listeners
+    img.addEventListener('mousedown', startDragging);
+    img.addEventListener('mousemove', drag);
+    img.addEventListener('mouseup', stopDragging);
+    img.addEventListener('mouseleave', stopDragging);
+}
+
+function zoomImage(direction) {
+    const img = document.getElementById("popup-expense-img");
+    let newZoom = zoomLevel + (direction === 'in' ? 0.1 : -0.1);
+    newZoom = Math.max(0.5, Math.min(3, newZoom)); // Limit 0.5x to 3x
+    if (newZoom !== zoomLevel) {
+        zoomLevel = newZoom;
+        // Adjust pan to maintain centering during zoom
+        const rect = img.getBoundingClientRect();
+        const container = img.parentElement.getBoundingClientRect();
+        const centerX = (container.width - rect.width) / 2 + panX;
+        const centerY = (container.height - rect.height) / 2 + panY;
+        const scaleFactor = newZoom / zoomLevel;
+        panX = centerX * (1 - scaleFactor);
+        panY = centerY * (1 - scaleFactor);
+        img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+        // Visual feedback for zoom limits
+        if (zoomLevel <= 0.5 || zoomLevel >= 3) {
+            img.style.opacity = '0.7';
+            setTimeout(() => img.style.opacity = '1', 200); // Flash effect
+        }
+    }
+}
+
+function handleKeyZoom(event) {
+    if (document.getElementById("expenseImagePopup").style.display === "flex") {
+        if (event.key === '+') zoomImage('in');
+        else if (event.key === '-') zoomImage('out');
+    }
+}
+
+function startDragging(event) {
+    if (zoomLevel > 1) { // Only allow dragging when zoomed in
+        isDragging = true;
+        const img = document.getElementById("popup-expense-img");
+        img.style.cursor = 'grabbing';
+        startX = event.clientX;
+        startY = event.clientY;
+    }
+}
+
+function drag(event) {
+    if (isDragging && zoomLevel > 1) {
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        panX += dx;
+        panY += dy;
+        startX = event.clientX;
+        startY = event.clientY;
+        const img = document.getElementById("popup-expense-img");
+        img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+    }
+}
+
+function stopDragging() {
+    if (isDragging) {
+        isDragging = false;
+        const img = document.getElementById("popup-expense-img");
+        img.style.cursor = 'grab';
+    }
+}
+
+function downloadImage() {
+    const img = document.getElementById("popup-expense-img");
+    if (img.src) {
+        const link = document.createElement('a');
+        link.href = img.src;
+        link.download = `expense_receipt_${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        alert("No image available to download.");
+    }
 }
 
 function closePopup(popupElement = null) {
@@ -619,6 +709,13 @@ function closePopup(popupElement = null) {
     } else {
         document.querySelectorAll(".user-popup").forEach(el => el.remove());
         document.getElementById("expenseImagePopup").style.display = "none";
+        // Remove keyboard and drag listeners
+        document.removeEventListener('keydown', handleKeyZoom);
+        const img = document.getElementById("popup-expense-img");
+        img.removeEventListener('mousedown', startDragging);
+        img.removeEventListener('mousemove', drag);
+        img.removeEventListener('mouseup', stopDragging);
+        img.removeEventListener('mouseleave', stopDragging);
     }
     selectedUserIndex = null;
 }

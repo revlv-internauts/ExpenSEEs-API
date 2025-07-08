@@ -231,10 +231,26 @@
             </div>
 
             <!-- Popup Viewer -->
-            <div id="expenseImagePopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
-                <div style="background: white; padding: 20px; border-radius: 5px;">
-                    <img id="popup-expense-img" style="max-width: 100%; max-height: 80vh;" alt="Expense Receipt">
-                    <button onclick="closePopup()" style="margin-top: 10px;">Close</button>
+            <div id="expenseImagePopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1001;">
+                <div style="background: white; padding: 20px; border-radius: 5px; text-align: center; position: relative; z-index: 1002; width: 600px; height: 500px; overflow: hidden;">
+                    <div style="position: relative; width: 100%; height: 400px; margin: 0 auto; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                        <img id="popup-expense-img" style="max-width: 100%; max-height: 100%; border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); position: relative; transform-origin: center; cursor: grab;" alt="Expense Receipt">
+                    </div>
+                    <div style="margin-top: 10px; position: relative; z-index: 1003;">
+                        <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: #5cb85c; color: white; cursor: pointer;">
+                            <i class="fas fa-search-plus"></i> Zoom In
+                        </button>
+                        <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: #d9534f; color: white; cursor: pointer;">
+                            <i class="fas fa-search-minus"></i> Zoom Out
+                        </button>
+                        <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: #111; color: white; cursor: pointer;">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                    <small style="display: block; margin-top: 5px; color: #666;">(Use + / - keys to zoom)</small>
+                    <button onclick="closePopup()" style="margin-top: 10px; padding: 5px 15px; border: none; border-radius: 5px; background: #ccc; color: black; cursor: pointer; z-index: 1003;">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>
