@@ -1,7 +1,7 @@
 package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
@@ -31,9 +31,9 @@ public class Expense {
 
     private String remarks;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonManagedReference // Replace @JsonIgnore with @JsonManagedReference
+    @JsonIgnore
     private User user;
 
     private LocalDateTime createdAt;
@@ -62,5 +62,11 @@ public class Expense {
         } catch (Exception e) {
             this.imagePaths = "[]";
         }
+    }
+
+    // Custom getter to expose username
+    @JsonProperty("username")
+    public String getUsername() {
+        return user != null ? user.getUsername() : "Unknown";
     }
 }

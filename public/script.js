@@ -314,7 +314,7 @@ function updateExpenseTable() {
         sortedExpenses.forEach(exp => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${exp.user.username || 'Unknown'}</td>
+                <td>${exp.username || 'Unknown'}</td> <!-- Changed from exp.user.username -->
                 <td>${exp.category || ''}</td>
                 <td>₱${exp.amount || 0}</td>
                 <td>${exp.dateOfTransaction || ''}</td>
@@ -334,7 +334,7 @@ function updateExpenseTable() {
                         groupKey = exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date';
                         break;
                     case "user":
-                        groupKey = exp.user?.username || 'Unknown';
+                        groupKey = exp.username || 'Unknown'; // Changed from exp.user?.username
                         break;
                     case "category":
                         groupKey = exp.category || 'Uncategorized';
@@ -360,7 +360,7 @@ function updateExpenseTable() {
             groupedExpenses[groupKey].forEach(exp => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${exp.user.username || 'Unknown'}</td>
+                    <td>${exp.username || 'Unknown'}</td> <!-- Changed from exp.user.username -->
                     <td>${exp.category || ''}</td>
                     <td>₱${exp.amount || 0}</td>
                     <td>${exp.dateOfTransaction || ''}</td>
@@ -381,19 +381,19 @@ function updateExpenseTable() {
 }
 
 function getSortedExpenses() {
-  const sortValue = document.getElementById("sortExpense")?.value || "date";
-  return [...expenses].sort((a, b) => {
-    switch (sortValue) {
-      case "amount":
-        return (b.amount || 0) - (a.amount || 0); // Highest to lowest
-      case "category":
-        return (a.category || '').localeCompare(b.category || '');
-      case "user":
-        return (a.user?.username || '').localeCompare(b.user?.username || '');
-      default: // date
-        return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction); // Latest to oldest
-    }
-  });
+    const sortValue = document.getElementById("sortExpense")?.value || "date";
+    return [...expenses].sort((a, b) => {
+        switch (sortValue) {
+            case "amount":
+                return (b.amount || 0) - (a.amount || 0);
+            case "category":
+                return (a.category || '').localeCompare(b.category || '');
+            case "user":
+                return (a.username || '').localeCompare(b.username || ''); // Changed from a.user?.username
+            default: // date
+                return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
+        }
+    });
 }
 
 function showExpenseImage(expenseId) {
