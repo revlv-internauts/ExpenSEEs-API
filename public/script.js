@@ -122,7 +122,7 @@ async function updateDashboard() {
         }
 
         // UPDATE UI
-        document.querySelector(".balance-card h1").textContent = `₱${expenses.reduce((sum, e) => sum + (e.amount || 0), 0)}`;
+        document.querySelector(".balance-card h1").textContent = `₱${(expenses.reduce((sum, e) => sum + (e.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
         updateChart();
         updateUserTable();
@@ -334,7 +334,7 @@ function updateBudgetTable() {
             row.innerHTML = `
                 <td>${req.username}</td>
                 <td>${req.name}</td>
-                <td>₱${req.amount.toFixed(2)}</td>
+                <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td><span class="status-badge ${statusClass}">${req.status}</span></td>
                 <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
             `;
@@ -381,7 +381,7 @@ function updateBudgetTable() {
                 row.innerHTML = `
                     <td>${req.username}</td>
                     <td>${req.name}</td>
-                    <td>₱${req.amount.toFixed(2)}</td>
+                    <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td><span class="status-badge ${statusClass}">${req.status}</span></td>
                     <td><button onclick="showBudgetDetails(${globalIndex})">View</button></td>
                 `;
@@ -414,7 +414,7 @@ function showBudgetDetails(index) {
     detailsDiv.innerHTML = `
         <p><strong>Username:</strong> ${budget.username || 'Unknown'}</p>
         <p><strong>Request Name:</strong> ${budget.name || 'No Name'}</p>
-        <p><strong>Total Amount:</strong> ₱${(budget.amount || 0).toFixed(2)} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toFixed(2)})` : ''}</p>
+        <p><strong>Total Amount:</strong> ₱${(budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''}</p>
         <p><strong>Status:</strong> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "APPROVED" ? "badge-approved" : "badge-denied"}">${budget.status || 'PENDING'}</span></p>
         <h4>Associated Expense Items:</h4>
         ${budget.expenses && budget.expenses.length > 0 ? `
@@ -423,8 +423,8 @@ function showBudgetDetails(index) {
                     <li>
                         <strong>Category:</strong> ${exp.category || 'N/A'}<br>
                         <strong>Quantity:</strong> ${exp.quantity || 0}<br>
-                        <strong>Amount per Unit:</strong> ₱${(exp.amountPerUnit || 0).toFixed(2)}<br>
-                        <strong>Subtotal:</strong> ₱${(exp.quantity * (exp.amountPerUnit || 0)).toFixed(2)}<br>
+                        <strong>Amount per Unit:</strong> ₱${(exp.amountPerUnit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>
+                        <strong>Subtotal:</strong> ₱${(exp.quantity * (exp.amountPerUnit || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>
                         <strong>Remarks:</strong> ${exp.remarks || 'None'}
                     </li>
                 `).join('')}
@@ -501,7 +501,7 @@ function updateExpenseTable() {
             row.innerHTML = `
                 <td>${exp.username || 'Unknown'}</td>
                 <td>${exp.category || ''}</td>
-                <td>₱${exp.amount || 0}</td>
+                <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>${exp.dateOfTransaction || ''}</td>
                 <td>${exp.remarks || ''}</td>
                 <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
@@ -547,7 +547,7 @@ function updateExpenseTable() {
                 row.innerHTML = `
                     <td>${exp.username || 'Unknown'}</td>
                     <td>${exp.category || ''}</td>
-                    <td>₱${exp.amount || 0}</td>
+                    <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>${exp.dateOfTransaction || ''}</td>
                     <td>${exp.remarks || ''}</td>
                     <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
