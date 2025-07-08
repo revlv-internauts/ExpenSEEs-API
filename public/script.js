@@ -299,10 +299,21 @@ function updateBudgetTable() {
     tbody.innerHTML = "";
 
     const sortValue = document.getElementById("sortBudget")?.value || "username";
+    const searchValue = document.getElementById("searchBudget")?.value.toLowerCase() || "";
+
+    let filteredBudgets = budgetRequests;
+    if (searchValue) {
+        filteredBudgets = budgetRequests.filter(req =>
+            (req.username?.toLowerCase().includes(searchValue) || '') +
+            (req.name?.toLowerCase().includes(searchValue) || '') +
+            (req.amount?.toString().includes(searchValue) || '') +
+            (req.status?.toLowerCase().includes(searchValue) || '')
+        );
+    }
 
     if (sortValue === "amount") {
         // Flat list sorted by amount (highest to lowest)
-        const sortedBudgets = [...budgetRequests].sort((a, b) => (b.amount || 0) - (a.amount || 0));
+        const sortedBudgets = [...filteredBudgets].sort((a, b) => (b.amount || 0) - (a.amount || 0));
         sortedBudgets.forEach((req, index) => {
             const row = document.createElement("tr");
             const statusClass = req.status === "PENDING" ? "badge-pending" :
@@ -313,7 +324,7 @@ function updateBudgetTable() {
                 <td>${req.name}</td>
                 <td>₱${req.amount.toFixed(2)}</td>
                 <td><span class="status-badge ${statusClass}">${req.status}</span></td>
-                <td><button onclick="showBudgetDetails(${index})">View</button></td>
+                <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
             `;
             tbody.appendChild(row);
         });
@@ -340,7 +351,7 @@ function updateBudgetTable() {
             return groups;
         };
 
-        const groupedBudgets = groupBudgets(budgetRequests, sortValue);
+        const groupedBudgets = groupBudgets(filteredBudgets, sortValue);
 
         Object.keys(groupedBudgets).sort().forEach((groupKey, index) => {
             // Add group header
@@ -373,6 +384,12 @@ function updateBudgetTable() {
             }
         });
     }
+
+    document.getElementById("no-budgets-message").style.display = filteredBudgets.length === 0 ? "block" : "none";
+}
+
+function filterBudgets() {
+    updateBudgetTable();
 }
 
 function showBudgetDetails(index) {
@@ -452,13 +469,25 @@ function updateExpenseTable() {
 
     const sortedExpenses = getSortedExpenses();
     const sortValue = document.getElementById("sortExpense")?.value || "date";
+    const searchValue = document.getElementById("searchExpense")?.value.toLowerCase() || "";
+
+    let filteredExpenses = sortedExpenses;
+    if (searchValue) {
+        filteredExpenses = sortedExpenses.filter(exp =>
+            (exp.username?.toLowerCase().includes(searchValue) || '') +
+            (exp.category?.toLowerCase().includes(searchValue) || '') +
+            (exp.amount?.toString().includes(searchValue) || '') +
+            (exp.dateOfTransaction?.toLowerCase().includes(searchValue) || '') +
+            (exp.remarks?.toLowerCase().includes(searchValue) || '')
+        );
+    }
 
     if (sortValue === "amount") {
         // Display amount sort as a flat list (highest to lowest)
-        sortedExpenses.forEach(exp => {
+        filteredExpenses.forEach(exp => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${exp.username || 'Unknown'}</td> <!-- Changed from exp.user.username -->
+                <td>${exp.username || 'Unknown'}</td>
                 <td>${exp.category || ''}</td>
                 <td>₱${exp.amount || 0}</td>
                 <td>${exp.dateOfTransaction || ''}</td>
@@ -478,7 +507,7 @@ function updateExpenseTable() {
                         groupKey = exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date';
                         break;
                     case "user":
-                        groupKey = exp.username || 'Unknown'; // Changed from exp.user?.username
+                        groupKey = exp.username || 'Unknown';
                         break;
                     case "category":
                         groupKey = exp.category || 'Uncategorized';
@@ -491,7 +520,7 @@ function updateExpenseTable() {
         };
 
         // Group expenses based on the sort value
-        const groupedExpenses = groupExpenses(sortedExpenses, sortValue);
+        const groupedExpenses = groupExpenses(filteredExpenses, sortValue);
 
         // Iterate over grouped items
         Object.keys(groupedExpenses).sort().forEach((groupKey, index) => {
@@ -504,7 +533,7 @@ function updateExpenseTable() {
             groupedExpenses[groupKey].forEach(exp => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${exp.username || 'Unknown'}</td> <!-- Changed from exp.user.username -->
+                    <td>${exp.username || 'Unknown'}</td>
                     <td>${exp.category || ''}</td>
                     <td>₱${exp.amount || 0}</td>
                     <td>${exp.dateOfTransaction || ''}</td>
@@ -522,6 +551,12 @@ function updateExpenseTable() {
             }
         });
     }
+
+    document.getElementById("no-expenses-message").style.display = filteredExpenses.length === 0 ? "block" : "none";
+}
+
+function filterExpenses() {
+    updateExpenseTable();
 }
 
 function getSortedExpenses() {

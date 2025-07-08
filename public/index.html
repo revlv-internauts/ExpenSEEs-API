@@ -173,6 +173,10 @@
                     </select>
                 </div>
             </div>
+            <div class="search-container">
+                <input id="searchBudget" type="text" placeholder="Search budgets..." oninput="filterBudgets()">
+            </div>
+            <p id="no-budgets-message" style="display:none; color: red; margin-top: 10px;">No budgets found.</p>
             <table>
                 <thead>
                 <tr>
@@ -213,6 +217,10 @@
                         </select>
                     </div>
                 </div>
+                <div class="search-container">
+                    <input id="searchExpense" type="text" placeholder="Search expenses..." oninput="filterExpenses()">
+                </div>
+                <p id="no-expenses-message" style="display:none; color: red; margin-top: 10px;">No expenses found.</p>
                 <table>
                     <thead>
                     <tr><th>Username</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Image</th></tr>
@@ -229,8 +237,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
 <div id="userModal" class="modal">
     <div class="modal-content">
