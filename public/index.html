@@ -167,10 +167,29 @@
             </div>
             <table>
                 <thead>
-                <tr><th>ID</th><th>User</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+                <tr>
+                    <th>Username</th>
+                    <th>Request</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
                 </thead>
                 <tbody id="budget-table"></tbody>
             </table>
+
+            <!-- Pop-up Card for Budget Details -->
+            <div id="budgetPopup" class="modal" style="display: none;">
+                <div class="modal-content popup-card" style="width: 400px; text-align: left; max-height: 70vh; overflow-y: auto;">
+                    <span class="close-btn" onclick="closeBudgetPopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
+                    <h3>Budget Details</h3>
+                    <div id="budgetDetails"></div> <!-- Removed user-details class -->
+                    <div class="popup-actions" style="margin-top: 1.5rem; text-align: center;">
+                        <button onclick="approveBudget()" style="background-color: #5cb85c; color: white;">APPROVE</button>
+                        <button onclick="denyBudget()" style="background-color: #d9534f; color: white;">DENY</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="expenses" class="tab">

@@ -3,6 +3,7 @@ let expenses = [];
 let budgetRequests = [];
 let token = null;
 let selectedUserIndex = null;
+let selectedBudgetIndex = null;
 
 // =================== AUTH ===================
 
@@ -75,47 +76,49 @@ function closeUserModal() {
 // =================== DASHBOARD UPDATE ===================
 
 async function updateDashboard() {
-  if (!token) return;
+    if (!token) return;
 
-  try {
-    // USERS
-    const usersRes = await fetch("http://localhost:8080/api/admin/users", {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const usersData = await usersRes.json();
-    if (usersRes.ok) users = usersData;
+    try {
+        // USERS
+        const usersRes = await fetch("http://localhost:8080/api/admin/users", {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const usersData = await usersRes.json();
+        if (usersRes.ok) users = usersData;
 
-    // EXPENSES
-    const expensesRes = await fetch("http://localhost:8080/api/expenses/all", {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const expensesData = await expensesRes.json();
-    if (expensesRes.ok) expenses = expensesData;
+        // EXPENSES
+        const expensesRes = await fetch("http://localhost:8080/api/expenses/all", {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const expensesData = await expensesRes.json();
+        if (expensesRes.ok) expenses = expensesData;
 
-    // BUDGET REQUESTS
-    const budgetRes = await fetch("http://localhost:8080/api/budgets", {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const budgetData = await budgetRes.json();
-    if (budgetRes.ok) {
-      budgetRequests = budgetData.map(b => ({
-        budgetId: b.budgetId,
-        username: b.user?.username || "Unknown",
-        amount: b.total || 0,
-        status: b.status || "PENDING"
-      }));
+        // BUDGET REQUESTS
+        const budgetRes = await fetch("http://localhost:8080/api/budgets", {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const budgetData = await budgetRes.json();
+        if (budgetRes.ok) {
+            budgetRequests = budgetData.map(b => ({
+                budgetId: b.budgetId,
+                username: b.username || "Unknown",
+                name: b.name || "No Name",
+                amount: b.total || 0,
+                status: b.status || "PENDING",
+                expenses: b.expenses || []
+            }));
+        }
+
+        // UPDATE UI
+        document.querySelector(".balance-card h1").textContent = `₱${expenses.reduce((sum, e) => sum + (e.amount || 0), 0)}`;
+        document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
+        updateChart();
+        updateUserTable();
+        updateBudgetTable();
+        updateExpenseTable();
+    } catch (error) {
+        alert("Dashboard error: " + error.message);
     }
-
-    // UPDATE UI
-    document.querySelector(".balance-card h1").textContent = `₱${expenses.reduce((sum, e) => sum + (e.amount || 0), 0)}`;
-    document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
-    updateChart();
-    updateUserTable();
-    updateBudgetTable();
-    updateExpenseTable();
-  } catch (error) {
-    alert("Dashboard error: " + error.message);
-  }
 }
 
 // =================== USER FUNCTIONS ===================
@@ -292,14 +295,93 @@ function filterUsers() {
 // =================== OTHER TABLES ===================
 
 function updateBudgetTable() {
-  const tbody = document.getElementById("budget-table");
-  tbody.innerHTML = "";
-  budgetRequests.forEach((req, index) => {
-    const row = `<tr><td>${req.budgetId}</td><td>${req.username}</td><td>₱${req.amount}</td><td>${req.status}</td>
-      <td><button onclick="updateRequest(${index}, 'APPROVED')">Approve</button>
-      <button onclick="updateRequest(${index}, 'DENIED')">Deny</button></td></tr>`;
-    tbody.innerHTML += row;
-  });
+    const tbody = document.getElementById("budget-table");
+    tbody.innerHTML = "";
+    budgetRequests.forEach((req, index) => {
+        const row = document.createElement("tr");
+        const statusClass = req.status === "PENDING" ? "badge-pending" :
+                          req.status === "APPROVED" ? "badge-approved" :
+                          "badge-denied";
+        row.innerHTML = `
+            <td>${req.username}</td>
+            <td>${req.name}</td>
+            <td>₱${req.amount.toFixed(2)}</td>
+            <td><span class="status-badge ${statusClass}">${req.status}</span></td>
+            <td><button onclick="showBudgetDetails(${index})">View</button></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function showBudgetDetails(index) {
+    selectedBudgetIndex = index;
+    const budget = budgetRequests[index];
+    console.log("Showing details for budget:", budget); // Debug log
+    // Calculate total from expense items for validation
+    const expenseTotal = budget.expenses.reduce((sum, exp) => sum + (exp.quantity * exp.amountPerUnit || 0), 0); // Handle undefined values
+    const detailsDiv = document.getElementById("budgetDetails");
+    detailsDiv.innerHTML = `
+        <p><strong>Username:</strong> ${budget.username || 'Unknown'}</p>
+        <p><strong>Request Name:</strong> ${budget.name || 'No Name'}</p>
+        <p><strong>Total Amount:</strong> ₱${(budget.amount || 0).toFixed(2)} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toFixed(2)})` : ''}</p>
+        <p><strong>Status:</strong> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "APPROVED" ? "badge-approved" : "badge-denied"}">${budget.status || 'PENDING'}</span></p>
+        <h4>Associated Expense Items:</h4>
+        ${budget.expenses && budget.expenses.length > 0 ? `
+            <ul>
+                ${budget.expenses.map(exp => `
+                    <li>
+                        <strong>Category:</strong> ${exp.category || 'N/A'}<br>
+                        <strong>Quantity:</strong> ${exp.quantity || 0}<br>
+                        <strong>Amount per Unit:</strong> ₱${(exp.amountPerUnit || 0).toFixed(2)}<br>
+                        <strong>Subtotal:</strong> ₱${(exp.quantity * (exp.amountPerUnit || 0)).toFixed(2)}<br>
+                        <strong>Remarks:</strong> ${exp.remarks || 'None'}
+                    </li>
+                `).join('')}
+            </ul>
+        ` : '<p>No expense items associated with this budget request yet.</p>'}
+    `;
+    document.getElementById("budgetPopup").style.display = "flex";
+}
+
+function closeBudgetPopup() {
+    document.getElementById("budgetPopup").style.display = "none";
+    selectedBudgetIndex = null;
+}
+
+async function approveBudget() {
+    if (selectedBudgetIndex === null) return;
+    await updateBudgetStatus("APPROVED");
+}
+
+async function denyBudget() {
+    if (selectedBudgetIndex === null) return;
+    await updateBudgetStatus("DENIED");
+}
+
+async function updateBudgetStatus(status) {
+    try {
+        const budget = budgetRequests[selectedBudgetIndex];
+        console.log("Updating status for budgetId:", budget.budgetId, "to:", status); // Debug log
+        const response = await fetch(`http://localhost:8080/api/budgets/${budget.budgetId}/status`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "text/plain",
+                "Authorization": `Bearer ${token}`
+            },
+            body: status
+        });
+        if (response.ok) {
+            budgetRequests[selectedBudgetIndex].status = status;
+            updateBudgetTable();
+            closeBudgetPopup();
+        } else {
+            const data = await response.json();
+            alert(data.error || "Status update failed");
+        }
+    } catch (error) {
+        console.error("Status update error:", error); // Debug log
+        alert("Update failed");
+    }
 }
 
 function updateExpenseTable() {

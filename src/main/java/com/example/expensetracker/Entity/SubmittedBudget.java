@@ -2,6 +2,7 @@ package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,5 +41,10 @@ public class SubmittedBudget {
 
     public enum Status {
         PENDING, APPROVED, DENIED
+    }
+
+    @JsonProperty("username")
+    public String getUsername() {
+        return user != null ? user.getUsername() : "Unknown";
     }
 }
