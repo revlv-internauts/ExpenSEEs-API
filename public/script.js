@@ -8,27 +8,39 @@ let selectedBudgetIndex = null;
 // =================== AUTH ===================
 
 async function login() {
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-  try {
-    const response = await fetch("http://localhost:8080/api/auth/sign-in", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usernameOrEmail: username, password })
-    });
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const errorElement = document.getElementById("login-error");
+    errorElement.style.display = "none"; // Hide any previous error
+    errorElement.textContent = ""; // Clear previous message
 
-    const data = await response.json();
-    if (response.ok && data.access_token) {
-      token = data.access_token;
-      document.getElementById("login-screen").style.display = "none";
-      document.getElementById("dashboard").style.display = "flex";
-      updateDashboard();
-    } else {
-      alert(data.error || "Login failed");
+    try {
+        const response = await fetch("http://localhost:8080/api/auth/sign-in", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usernameOrEmail: username, password })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.access_token) {
+            // Check if the username is "admin" to enforce admin-only access
+            if (username.toLowerCase() === "admin") {
+                token = data.access_token;
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("dashboard").style.display = "flex";
+                updateDashboard();
+            } else {
+                errorElement.textContent = "Access denied. Only the admin can log in.";
+                errorElement.style.display = "block";
+            }
+        } else {
+            errorElement.textContent = data.error || "Login failed. Please check your credentials.";
+            errorElement.style.display = "block";
+        }
+    } catch (error) {
+        errorElement.textContent = "Network error: " + error.message;
+        errorElement.style.display = "block";
     }
-  } catch (error) {
-    alert("Network error: " + error.message);
-  }
 }
 
 function logout() {
