@@ -788,3 +788,59 @@ tbody tr:hover {
 #budgetPopup .modal-content .close-btn:hover {
     color: #f46354;
 }
+
+/* ... (keep existing styles) */
+
+/* Enhance Expenses Tab Table (existing) */
+#expenses table {
+    background: linear-gradient(135deg, #ffe6e6 0%, #ffffff 100%);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#expenses thead {
+    background: linear-gradient(90deg, #ff5722, #ff8a50);
+    color: white;
+    font-weight: 600;
+}
+
+#expenses tbody tr {
+    transition: background 0.2s ease;
+}
+
+#expenses tbody tr:hover {
+    background: #fff3f0;
+}
+
+/* Group Header and Separator (existing) */
+#expenses tbody tr[style*="background: linear-gradient"] {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#expenses tbody tr[style*="height: 0.5rem"] {
+    padding: 0;
+}
+
+/* Responsive Adjustments (existing) */
+@media (max-width: 768px) {
+    #expenses table {
+        font-size: 0.9rem;
+    }
+    #expenses tbody tr[style*="background: linear-gradient"] {
+        font-size: 0.9rem;
+    }
+    .expenses-tab .table-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* Match Budget Request sort bar size to Expenses tab */
+#budgets select#sortBudget {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+}
