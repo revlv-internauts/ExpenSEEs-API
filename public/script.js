@@ -408,34 +408,63 @@ function filterBudgets() {
 }
 
 function showBudgetDetails(index) {
+    if (index === null || index < 0 || index >= budgetRequests.length) {
+        return; // Prevent popup if index is invalid
+    }
     selectedBudgetIndex = index;
     const budget = budgetRequests[index];
     console.log("Showing details for budget:", budget); // Debug log
     // Calculate total from expense items for validation
     const expenseTotal = budget.expenses.reduce((sum, exp) => sum + (exp.quantity * exp.amountPerUnit || 0), 0); // Handle undefined values
     const detailsDiv = document.getElementById("budgetDetails");
+    const isFinalStatus = budget.status === "APPROVED" || budget.status === "DENIED";
     detailsDiv.innerHTML = `
-        <p><strong>Username:</strong> ${budget.username || 'Unknown'}</p>
-        <p><strong>Request Name:</strong> ${budget.name || 'No Name'}</p>
-        <p><strong>Total Amount:</strong> ₱${(budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''}</p>
-        <p><strong>Status:</strong> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "APPROVED" ? "badge-approved" : "badge-denied"}">${budget.status || 'PENDING'}</span></p>
-        <h4>Associated Expense Items:</h4>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${budget.username || 'Unknown'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${budget.name || 'No Name'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${(budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "APPROVED" ? "badge-approved" : "badge-denied"}" style="word-break: break-word;">${budget.status || 'PENDING'}</span>
+        </div>
+        <h4 style="margin: 1rem 0;">Associated Expense Items:</h4>
         ${budget.expenses && budget.expenses.length > 0 ? `
-            <ul>
+            <ul style="padding-left: 20px; margin: 0;">
                 ${budget.expenses.map(exp => `
-                    <li>
-                        <strong>Category:</strong> ${exp.category || 'N/A'}<br>
-                        <strong>Quantity:</strong> ${exp.quantity || 0}<br>
-                        <strong>Amount per Unit:</strong> ₱${(exp.amountPerUnit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>
-                        <strong>Subtotal:</strong> ₱${(exp.quantity * (exp.amountPerUnit || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>
-                        <strong>Remarks:</strong> ${exp.remarks || 'None'}
+                    <li style="margin-bottom: 1rem;">
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${exp.category || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Quantity:</span> <span style="word-break: break-word;">${exp.quantity || 0}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount per Unit:</span> <span style="word-break: break-word;">₱${(exp.amountPerUnit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Subtotal:</span> <span style="word-break: break-word;">₱${(exp.quantity * (exp.amountPerUnit || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
+                        </div>
                     </li>
                 `).join('')}
             </ul>
-        ` : '<p>No expense items associated with this budget request yet.</p>'}
+        ` : '<p style="margin: 1rem 0;">No expense items associated with this budget request yet.</p>'}
+        ${!isFinalStatus ? `
+            <div style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 1rem;">
+                <button onclick="approveBudget()" style="padding: 5px 10px; background: #5cb85c; color: white; border: none; border-radius: 5px; font-size: 1rem; min-width: 80px; height: 30px;">Approve</button>
+                <button onclick="denyBudget()" style="padding: 5px 10px; background: #d9534f; color: white; border: none; border-radius: 5px; font-size: 1rem; min-width: 80px; height: 30px;">Deny</button>
+            </div>
+        ` : ''}
     `;
     document.getElementById("budgetPopup").style.display = "flex";
 }
+
 
 function closeBudgetPopup() {
     document.getElementById("budgetPopup").style.display = "none";
@@ -464,17 +493,18 @@ async function updateBudgetStatus(status) {
             },
             body: status
         });
+        const data = await response.json();
         if (response.ok) {
             budgetRequests[selectedBudgetIndex].status = status;
             updateBudgetTable();
             closeBudgetPopup();
         } else {
-            const data = await response.json();
-            alert(data.error || "Status update failed");
+            const errorMessage = data.error || "Status update failed";
+            alert(errorMessage === "Budget status is final and cannot be changed" ? "This budget's status is final and cannot be modified." : errorMessage);
         }
     } catch (error) {
         console.error("Status update error:", error); // Debug log
-        alert("Update failed");
+        alert("An unexpected error occurred during status update");
     }
 }
 

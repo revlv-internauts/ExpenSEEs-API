@@ -75,9 +75,17 @@ public class BudgetService {
             return new ResponseEntity<>("Budget not found", HttpStatus.NOT_FOUND);
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
-        budget.setStatus(status);
-        budgetRepository.save(budget);
-        return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
+        // Check if the budget status is already APPROVED or DENIED
+        if (budget.getStatus() == SubmittedBudget.Status.APPROVED || budget.getStatus() == SubmittedBudget.Status.DENIED) {
+            return new ResponseEntity<>("Budget status is final and cannot be changed", HttpStatus.FORBIDDEN);
+        }
+        // Only allow update if status is PENDING
+        if (budget.getStatus() == SubmittedBudget.Status.PENDING) {
+            budget.setStatus(status);
+            budgetRepository.save(budget);
+            return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
+        }
+        return new ResponseEntity<>("Invalid status transition", HttpStatus.BAD_REQUEST);
     }
 
     @Transactional
