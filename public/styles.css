@@ -7,6 +7,16 @@ body, html {
     overflow: hidden;
 }
 
+#home header h2 {
+    margin-left: 40px;  /* Move to the right */
+    margin-top: 2px;   /* Move down */
+}
+
+.table-header h3 {
+    margin-left: 40px;  /* Move to the right */
+    margin-top: 2px;   /* Move down */
+}
+
 /* === Login Page === */
 .login-bg {
     background-image: url('images/background.jpg');
