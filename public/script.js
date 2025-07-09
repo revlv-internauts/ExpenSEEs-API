@@ -1,22 +1,24 @@
 let users = [];
 let expenses = [];
 let budgetRequests = [];
+let notifications = [];
 let token = null;
 let selectedUserIndex = null;
+let userDetailsPopup = null;
 let selectedBudgetIndex = null;
 let zoomLevel = 1;
 let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
+let categoryChart, userChart;
 
 // =================== AUTH ===================
-
 async function login() {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
     const errorElement = document.getElementById("login-error");
-    errorElement.style.display = "none"; // Hide any previous error
-    errorElement.textContent = ""; // Clear previous message
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
 
     try {
         const response = await fetch("http://localhost:8080/api/auth/sign-in", {
@@ -27,7 +29,6 @@ async function login() {
 
         const data = await response.json();
         if (response.ok && data.access_token) {
-            // Check if the username is "admin" to enforce admin-only access
             if (username.toLowerCase() === "admin") {
                 token = data.access_token;
                 document.getElementById("login-screen").style.display = "none";
@@ -48,49 +49,43 @@ async function login() {
 }
 
 function logout() {
-  token = null;
-  document.getElementById("dashboard").style.display = "none";
-  document.getElementById("login-screen").style.display = "flex";
+    token = null;
+    document.getElementById("dashboard").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    if (categoryChart) categoryChart.destroy();
+    if (userChart) userChart.destroy();
 }
 
 // =================== UI CONTROL ===================
-
 function showTab(tabId) {
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(tab => tab.classList.remove("active"));
-  document.getElementById(tabId).classList.add("active");
+    const tabs = document.querySelectorAll(".tab");
+    tabs.forEach(tab => tab.classList.remove("active"));
+    document.getElementById(tabId).classList.add("active");
 }
 
 function toggleSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const content = document.getElementById("content");
-  sidebar.classList.toggle("active");
-  content.classList.toggle("content-shift");
-}
-
-function togglePassword(id, icon) {
-  const input = document.getElementById(id);
-  input.type = input.type === "password" ? "text" : "password";
+    const sidebar = document.getElementById("sidebar");
+    const content = document.getElementById("content");
+    sidebar.classList.toggle("active");
+    content.classList.toggle("content-shift");
 }
 
 // =================== USER MODAL ===================
-
 function openUserModal() {
-  document.getElementById("userModal").style.display = "flex";
+    document.getElementById("userModal").style.display = "flex";
 }
 
 function closeUserModal() {
-  document.getElementById("userModal").style.display = "none";
-  document.getElementById("newUsername").value = "";
-  document.getElementById("newEmail").value = "";
-  document.getElementById("newPassword").value = "";
-  const errorEl = document.getElementById("addUserError");
-  errorEl.textContent = "";
-  errorEl.style.display = "none";
+    document.getElementById("userModal").style.display = "none";
+    document.getElementById("newUsername").value = "";
+    document.getElementById("newEmail").value = "";
+    document.getElementById("newPassword").value = "";
+    const errorEl = document.getElementById("addUserError");
+    errorEl.textContent = "";
+    errorEl.style.display = "none";
 }
 
 // =================== DASHBOARD UPDATE ===================
-
 async function updateDashboard() {
     if (!token) return;
 
@@ -125,159 +120,258 @@ async function updateDashboard() {
             }));
         }
 
+        // NOTIFICATIONS
+        const notificationsRes = await fetch("http://localhost:8080/api/admin/notifications", {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const notificationsData = await notificationsRes.json();
+        if (notificationsRes.ok) {
+            notifications = notificationsData.map(n => ({
+                userId: n.userId,
+                username: n.username || "Unknown",
+                action: n.action || "Unknown action",
+                details: n.details || "",
+                timestamp: n.timestamp || new Date().toISOString()
+            }));
+        }
+
         // UPDATE UI
-        document.querySelector(".balance-card h1").textContent = `₱${(expenses.reduce((sum, e) => sum + (e.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.querySelector(".balance-card h1").textContent = `₱${(budgetRequests.filter(b => b.status === "APPROVED").reduce((sum, b) => sum + (b.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
-        updateChart();
+        updateNotifications();
+        updateCharts();
         updateUserTable();
         updateBudgetTable();
         updateExpenseTable();
     } catch (error) {
-        alert("Dashboard error: " + error.message);
+        showToast("Dashboard error: " + error.message);
     }
+}
+
+// =================== NOTIFICATIONS ===================
+function updateNotifications() {
+    const notificationsList = document.getElementById("notifications-list");
+    notificationsList.innerHTML = "";
+
+    if (notifications.length === 0) {
+        document.getElementById("no-notifications-message").style.display = "block";
+        return;
+    }
+
+    document.getElementById("no-notifications-message").style.display = "none";
+
+    notifications
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 5)
+        .forEach(notification => {
+            const div = document.createElement("div");
+            div.className = "notification-item";
+            div.innerHTML = `
+                <p><strong>${notification.username}</strong> ${notification.action}</p>
+                <p style="color: #555; font-size: 0.8rem;">${new Date(notification.timestamp).toLocaleString()}</p>
+            `;
+            notificationsList.appendChild(div);
+        });
+}
+
+// =================== CHARTS ===================
+function updateCharts() {
+    // Top Categories
+    const categoryTotals = expenses.reduce((acc, exp) => {
+        const cat = exp.category || "Uncategorized";
+        acc[cat] = (acc[cat] || 0) + (exp.amount || 0);
+        return acc;
+    }, {});
+    const topCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    const categoryLabels = topCategories.map(([cat]) => cat);
+    const categoryData = topCategories.map(([_, amount]) => amount);
+
+    if (categoryChart) categoryChart.destroy();
+    categoryChart = new Chart(document.getElementById("categoryChart"), {
+        type: "bar",
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                label: "Total Expenses",
+                data: categoryData,
+                backgroundColor: "rgba(229, 115, 115, 0.6)",
+                borderColor: "rgba(229, 115, 115, 1)",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Top Users
+    const userTotals = expenses.reduce((acc, exp) => {
+        const user = exp.username || "Unknown";
+        acc[user] = (acc[user] || 0) + (exp.amount || 0);
+        return acc;
+    }, {});
+    const topUsers = Object.entries(userTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    const userLabels = topUsers.map(([user]) => user);
+    const userData = topUsers.map(([_, amount]) => amount);
+
+    if (userChart) userChart.destroy();
+    userChart = new Chart(document.getElementById("userChart"), {
+        type: "bar",
+        data: {
+            labels: userLabels,
+            datasets: [{
+                label: "Total Expenses",
+                data: userData,
+                backgroundColor: "rgba(255, 153, 153, 0.6)",
+                borderColor: "rgba(255, 153, 153, 1)",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
 }
 
 // =================== USER FUNCTIONS ===================
-
 async function createUser() {
-  const username = document.getElementById("newUsername").value.trim();
-  const email = document.getElementById("newEmail").value.trim();
-  const password = document.getElementById("newPassword").value;
-  const errorEl = document.getElementById("addUserError");
-  errorEl.style.display = "none";
-  errorEl.textContent = "";
+    const username = document.getElementById("newUsername").value.trim();
+    const email = document.getElementById("newEmail").value.trim();
+    const password = document.getElementById("newPassword").value;
+    const errorEl = document.getElementById("addUserError");
+    errorEl.style.display = "none";
+    errorEl.textContent = "";
 
-  if (!username || !email || !password) {
-    errorEl.textContent = "Please fill all fields.";
-    errorEl.style.display = "block";
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:8080/api/admin/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ username, email, password })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      closeUserModal();
-      updateDashboard();
-    } else {
-      const msg = data?.error || "Failed to create user";
-      if (msg.includes("already exists")) {
-        errorEl.textContent = "Username or email already exists.";
-      } else {
-        errorEl.textContent = msg;
-      }
-      errorEl.style.display = "block";
+    if (!username || !email || !password) {
+        errorEl.textContent = "Please fill all fields.";
+        errorEl.style.display = "block";
+        return;
     }
-  } catch (error) {
-    errorEl.textContent = "Network error. Please try again.";
-    errorEl.style.display = "block";
-  }
+
+    try {
+        const response = await fetch("http://localhost:8080/api/admin/users", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            closeUserModal();
+            updateDashboard();
+            showToast("User created successfully");
+        } else {
+            errorEl.textContent = data.error || "Failed to create user";
+            errorEl.style.display = "block";
+        }
+    } catch (error) {
+        errorEl.textContent = "Network error: " + error.message;
+        errorEl.style.display = "block";
+    }
 }
 
 async function deleteUser(index) {
-  try {
-    const user = users[index];
-    const response = await fetch(`http://localhost:8080/api/admin/users/${user.userId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (response.ok) {
-      users.splice(index, 1);
-      updateUserTable();
-      updateDashboard();
-      showToast("User deleted successfully"); // Optional: Add feedback
-    } else {
-      const data = await response.json();
-      alert(data.error || "Delete failed");
+    try {
+        const user = users[index];
+        const response = await fetch(`http://localhost:8080/api/admin/users/${user.userId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+            users.splice(index, 1);
+            updateUserTable();
+            updateDashboard();
+            showToast("User deleted successfully");
+        } else {
+            showToast("Delete failed");
+        }
+    } catch {
+        showToast("Delete error");
     }
-  } catch {
-    alert("Delete error");
-  }
 }
 
 function updateUserTable() {
-  const tbody = document.getElementById("users-table");
-  tbody.innerHTML = "";
-  const filteredUsers = users.filter(u => u.username?.toLowerCase() !== "admin");
+    const tbody = document.getElementById("users-table");
+    tbody.innerHTML = "";
+    const filteredUsers = users.filter(u => u.username?.toLowerCase() !== "admin");
 
-  filteredUsers.forEach((user, index) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${user.username}</td>
-      <td>${user.email}</td>
-      <td><button onclick="showUserDetails(${index})">View</button></td>
-    `;
-    tbody.appendChild(row);
-  });
+    filteredUsers.forEach((user, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td><button onclick="showUserDetails(${index})">View</button></td>
+        `;
+        tbody.appendChild(row);
+    });
 
-  document.getElementById("no-users-message").style.display = filteredUsers.length === 0 ? "block" : "none";
+    document.getElementById("no-users-message").style.display = filteredUsers.length === 0 ? "block" : "none";
 }
 
 function showUserDetails(index) {
-  selectedUserIndex = index;
-  const user = users.filter(u => u.username?.toLowerCase() !== "admin")[index];
+    selectedUserIndex = index;
+    const user = users.filter(u => u.username?.toLowerCase() !== "admin")[index];
 
-  const popup = document.createElement("div");
-  popup.className = "user-popup";
-  popup.innerHTML = `
-    <div class="popup-card">
-      <h3>User Details</h3>
-      <p><strong>ID:</strong> ${user.userId}</p>
-      <p><strong>Username:</strong> ${user.username}</p>
-      <p><strong>Email:</strong> ${user.email}</p>
-      <div class="popup-actions" id="userPopupActions-${index}">
-        <button>Delete</button>
-        <button>Close</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(popup);
-  popup.onclick = e => { if (e.target === popup) closePopup(popup); };
-
-  // Add event listeners after the popup is added to the DOM
-  const actionsDiv = document.getElementById(`userPopupActions-${index}`);
-  actionsDiv.querySelector("button:nth-child(1)").addEventListener("click", () => confirmDeleteUser(popup));
-  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => closePopup(popup));
+    userDetailsPopup = document.createElement("div");
+    userDetailsPopup.className = "user-popup";
+    userDetailsPopup.innerHTML = `
+        <div class="popup-card">
+            <h3>User Details</h3>
+            <p><strong>ID:</strong> ${user.userId}</p>
+            <p><strong>Username:</strong> ${user.username}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <div class="popup-actions">
+                <button onclick="confirmDeleteUser()">Delete</button>
+                <button onclick="closePopup()">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(userDetailsPopup);
 }
 
-function confirmDeleteUser(userPopup) {
-  const confirmPopup = document.createElement("div");
-  confirmPopup.className = "user-popup";
-  confirmPopup.innerHTML = `
-    <div class="popup-card">
-      <h3>Confirm Deletion</h3>
-      <p>Are you sure you want to delete this user?</p>
-      <div class="popup-actions" id="confirmPopupActions">
-        <button style="background-color: red; color: white;">Yes, Delete</button>
-        <button>Cancel</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(confirmPopup);
-  confirmPopup.onclick = e => { if (e.target === confirmPopup) closePopup(confirmPopup); };
+function confirmDeleteUser() {
+    const confirmPopup = document.getElementById("confirmModal");
+    confirmPopup.style.display = "flex";
+}
 
-  // Add event listeners after the popup is added to the DOM
-  const actionsDiv = document.getElementById("confirmPopupActions");
-  actionsDiv.querySelector("button:nth-child(1)").addEventListener("click", () => {
-    const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
-    const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
-    deleteUser(actualIndex);
-    closePopup(confirmPopup);
-    closePopup(userPopup); // Close user details popup
-  });
-  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => {
-    closePopup(confirmPopup);
-    closePopup(userPopup); // Close user details popup
-  });
+function cancelDeleteUser() {
+    const confirmPopup = document.getElementById("confirmModal");
+    confirmPopup.style.display = "none";
+    if (userDetailsPopup) {
+        userDetailsPopup.remove();
+        userDetailsPopup = null;
+    }
+}
+
+function confirmDeleteUser() {
+    const confirmPopup = document.getElementById("confirmModal");
+    if (selectedUserIndex !== null) {
+        const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
+        const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
+        deleteUser(actualIndex);
+    }
+    confirmPopup.style.display = "none";
+    if (userDetailsPopup) {
+        userDetailsPopup.remove();
+        userDetailsPopup = null;
+    }
 }
 
 function closePopup(popupElement = null) {
@@ -286,35 +380,41 @@ function closePopup(popupElement = null) {
     } else {
         document.querySelectorAll(".user-popup").forEach(el => el.remove());
         document.getElementById("expenseImagePopup").style.display = "none";
+        document.removeEventListener('keydown', handleKeyZoom);
+        const img = document.getElementById("popup-expense-img");
+        img.removeEventListener('mousedown', startDragging);
+        img.removeEventListener('mousemove', drag);
+        img.removeEventListener('mouseup', stopDragging);
+        img.removeEventListener('mouseleave', stopDragging);
     }
+    userDetailsPopup = null;
     selectedUserIndex = null;
 }
 
 function filterUsers() {
-  const value = document.getElementById("searchInput").value.toLowerCase();
-  const tbody = document.getElementById("users-table");
-  tbody.innerHTML = "";
+    const value = document.getElementById("searchInput").value.toLowerCase();
+    const tbody = document.getElementById("users-table");
+    tbody.innerHTML = "";
 
-  const filtered = users.filter(u =>
-    u.username?.toLowerCase().includes(value) ||
-    u.email?.toLowerCase().includes(value)
-  ).filter(u => u.username?.toLowerCase() !== "admin");
+    const filtered = users.filter(u =>
+        u.username?.toLowerCase().includes(value) ||
+        u.email?.toLowerCase().includes(value)
+    ).filter(u => u.username?.toLowerCase() !== "admin");
 
-  filtered.forEach((user, index) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${user.username}</td>
-      <td>${user.email}</td>
-      <td><button onclick="showUserDetails(${users.findIndex(u => u.userId === user.userId)})">View</button></td>
-    `;
-    tbody.appendChild(row);
-  });
+    filtered.forEach((user, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td><button onclick="showUserDetails(${index})">View</button></td>
+        `;
+        tbody.appendChild(row);
+    });
 
-  document.getElementById("no-users-message").style.display = filtered.length === 0 ? "block" : "none";
+    document.getElementById("no-users-message").style.display = filtered.length === 0 ? "block" : "none";
 }
 
-// =================== OTHER TABLES ===================
-
+// =================== BUDGET FUNCTIONS ===================
 function updateBudgetTable() {
     const tbody = document.getElementById("budget-table");
     tbody.innerHTML = "";
@@ -325,15 +425,14 @@ function updateBudgetTable() {
     let filteredBudgets = budgetRequests;
     if (searchValue) {
         filteredBudgets = budgetRequests.filter(req =>
-            (req.username?.toLowerCase().includes(searchValue) || '') +
-            (req.name?.toLowerCase().includes(searchValue) || '') +
-            (req.amount?.toString().includes(searchValue) || '') +
+            (req.username?.toLowerCase().includes(searchValue) || '') ||
+            (req.name?.toLowerCase().includes(searchValue) || '') ||
+            (req.amount?.toString().includes(searchValue) || '') ||
             (req.status?.toLowerCase().includes(searchValue) || '')
         );
     }
 
     if (sortValue === "amount") {
-        // Flat list sorted by amount (highest to lowest)
         const sortedBudgets = [...filteredBudgets].sort((a, b) => (b.amount || 0) - (a.amount || 0));
         sortedBudgets.forEach((req, index) => {
             const row = document.createElement("tr");
@@ -350,21 +449,14 @@ function updateBudgetTable() {
             tbody.appendChild(row);
         });
     } else {
-        // Grouped sorting for username, request, or status
         const groupBudgets = (budgets, key) => {
             const groups = {};
             budgets.forEach(req => {
                 let groupKey;
                 switch (key) {
-                    case "username":
-                        groupKey = req.username || 'Unknown';
-                        break;
-                    case "name":
-                        groupKey = req.name || 'No Name';
-                        break;
-                    case "status":
-                        groupKey = req.status || 'PENDING';
-                        break;
+                    case "username": groupKey = req.username || 'Unknown'; break;
+                    case "name": groupKey = req.name || 'No Name'; break;
+                    case "status": groupKey = req.status || 'PENDING'; break;
                 }
                 if (!groups[groupKey]) groups[groupKey] = [];
                 groups[groupKey].push(req);
@@ -375,32 +467,28 @@ function updateBudgetTable() {
         const groupedBudgets = groupBudgets(filteredBudgets, sortValue);
 
         Object.keys(groupedBudgets).sort().forEach((groupKey, index) => {
-            // Add group header
             const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="5" style="background: linear-gradient(90deg, #ffe6e6, #ffffff); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffd1c5;">${groupKey}</td>`;
+            headerRow.innerHTML = `<td colspan="5" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
 
-            // Add budget rows for this group
-            groupedBudgets[groupKey].forEach((req, localIndex) => {
-                const globalIndex = budgetRequests.findIndex(b => b.budgetId === req.budgetId);
+            groupedBudgets[groupKey].forEach(req => {
+                const row = document.createElement("tr");
                 const statusClass = req.status === "PENDING" ? "badge-pending" :
                                   req.status === "APPROVED" ? "badge-approved" :
                                   "badge-denied";
-                const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${req.username}</td>
                     <td>${req.name}</td>
                     <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td><span class="status-badge ${statusClass}">${req.status}</span></td>
-                    <td><button onclick="showBudgetDetails(${globalIndex})">View</button></td>
+                    <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
 
-            // Add separator after each group except the last one
             if (index < Object.keys(groupedBudgets).length - 1) {
                 const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="5" style="height: 0.5rem; background: linear-gradient(to right, #ffd1c5, #ffffff); border-bottom: 1px solid #ffd1c5;"></td>`;
+                separatorRow.innerHTML = `<td colspan="5" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
                 tbody.appendChild(separatorRow);
             }
         });
@@ -414,16 +502,14 @@ function filterBudgets() {
 }
 
 function showBudgetDetails(index) {
-    if (index === null || index < 0 || index >= budgetRequests.length) {
-        return; // Prevent popup if index is invalid
-    }
+    if (index === null || index < 0 || index >= budgetRequests.length) return;
     selectedBudgetIndex = index;
     const budget = budgetRequests[index];
-    console.log("Showing details for budget:", budget); // Debug log
-    // Calculate total from expense items for validation
-    const expenseTotal = budget.expenses.reduce((sum, exp) => sum + (exp.quantity * exp.amountPerUnit || 0), 0); // Handle undefined values
+    const expenseTotal = budget.expenses.reduce((sum, exp) => sum + (exp.quantity * exp.amountPerUnit || 0), 0);
     const detailsDiv = document.getElementById("budgetDetails");
-    const isFinalStatus = budget.status === "APPROVED" || budget.status === "DENIED";
+    const actionsDiv = document.getElementById("budgetActions");
+    const isPending = budget.status === "PENDING";
+
     detailsDiv.innerHTML = `
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${budget.username || 'Unknown'}</span>
@@ -461,13 +547,13 @@ function showBudgetDetails(index) {
                 `).join('')}
             </ul>
         ` : '<p style="margin: 1rem 0;">No expense items associated with this budget request yet.</p>'}
-        ${!isFinalStatus ? `
-            <div style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 1rem;">
-                <button onclick="approveBudget()" style="padding: 5px 10px; background: #5cb85c; color: white; border: none; border-radius: 5px; font-size: 1rem; min-width: 80px; height: 30px;">Approve</button>
-                <button onclick="denyBudget()" style="padding: 5px 10px; background: #d9534f; color: white; border: none; border-radius: 5px; font-size: 1rem; min-width: 80px; height: 30px;">Deny</button>
-            </div>
-        ` : ''}
     `;
+
+    actionsDiv.innerHTML = isPending ? `
+        <button onclick="approveBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Approve</button>
+        <button onclick="denyBudget()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
+    ` : ``;
+
     document.getElementById("budgetPopup").style.display = "flex";
 }
 
@@ -489,7 +575,6 @@ async function denyBudget() {
 async function updateBudgetStatus(status) {
     try {
         const budget = budgetRequests[selectedBudgetIndex];
-        console.log("Updating status for budgetId:", budget.budgetId, "to:", status); // Debug log
         const response = await fetch(`http://localhost:8080/api/budgets/${budget.budgetId}/status`, {
             method: "PUT",
             headers: {
@@ -503,16 +588,16 @@ async function updateBudgetStatus(status) {
             budgetRequests[selectedBudgetIndex].status = status;
             updateBudgetTable();
             closeBudgetPopup();
+            showToast(`Budget ${status.toLowerCase()} successfully`);
         } else {
-            const errorMessage = data.error || "Status update failed";
-            alert(errorMessage === "Budget status is final and cannot be changed" ? "This budget's status is final and cannot be modified." : errorMessage);
+            showToast(data.error || "Status update failed");
         }
     } catch (error) {
-        console.error("Status update error:", error); // Debug log
-        alert("An unexpected error occurred during status update");
+        showToast("Status update error: " + error.message);
     }
 }
 
+// =================== EXPENSE FUNCTIONS ===================
 function updateExpenseTable() {
     const tbody = document.getElementById("expenses-table");
     tbody.innerHTML = "";
@@ -524,16 +609,15 @@ function updateExpenseTable() {
     let filteredExpenses = sortedExpenses;
     if (searchValue) {
         filteredExpenses = sortedExpenses.filter(exp =>
-            (exp.username?.toLowerCase().includes(searchValue) || '') +
-            (exp.category?.toLowerCase().includes(searchValue) || '') +
-            (exp.amount?.toString().includes(searchValue) || '') +
-            (exp.dateOfTransaction?.toLowerCase().includes(searchValue) || '') +
+            (exp.username?.toLowerCase().includes(searchValue) || '') ||
+            (exp.category?.toLowerCase().includes(searchValue) || '') ||
+            (exp.amount?.toString().includes(searchValue) || '') ||
+            (exp.dateOfTransaction?.toLowerCase().includes(searchValue) || '') ||
             (exp.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
 
     if (sortValue === "amount") {
-        // Display amount sort as a flat list (highest to lowest)
         filteredExpenses.forEach(exp => {
             const row = document.createElement("tr");
             row.innerHTML = `
@@ -547,7 +631,6 @@ function updateExpenseTable() {
             tbody.appendChild(row);
         });
     } else {
-        // Function to group expenses based on sort value (for date, user, category)
         const groupExpenses = (expenses, key) => {
             const groups = {};
             expenses.forEach(exp => {
@@ -569,17 +652,13 @@ function updateExpenseTable() {
             return groups;
         };
 
-        // Group expenses based on the sort value
         const groupedExpenses = groupExpenses(filteredExpenses, sortValue);
 
-        // Iterate over grouped items
         Object.keys(groupedExpenses).sort().forEach((groupKey, index) => {
-            // Add group header
             const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="6" style="background: linear-gradient(90deg, #ffe6e6, #ffffff); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffd1c5;">${groupKey}</td>`;
+            headerRow.innerHTML = `<td colspan="6" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
 
-            // Add expense rows for this group
             groupedExpenses[groupKey].forEach(exp => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
@@ -593,10 +672,9 @@ function updateExpenseTable() {
                 tbody.appendChild(row);
             });
 
-            // Add separator after each group except the last one
             if (index < Object.keys(groupedExpenses).length - 1) {
                 const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="6" style="height: 0.5rem; background: linear-gradient(to right, #ffd1c5, #ffffff); border-bottom: 1px solid #ffd1c5;"></td>`;
+                separatorRow.innerHTML = `<td colspan="6" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
                 tbody.appendChild(separatorRow);
             }
         });
@@ -619,7 +697,7 @@ function getSortedExpenses() {
                 return (a.category || '').localeCompare(b.category || '');
             case "user":
                 return (a.username || '').localeCompare(b.username || '');
-            default: // date
+            default:
                 return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
         }
     });
@@ -628,13 +706,12 @@ function getSortedExpenses() {
 function showExpenseImage(expenseId) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
-    zoomLevel = 1; // Reset zoom
-    panX = 0; panY = 0; // Reset pan
+    zoomLevel = 1;
+    panX = 0; panY = 0;
     img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-    img.style.width = 'auto'; // Reset to natural size, constrained by max-width/max-height
-    img.style.height = 'auto'; // Reset to natural size, constrained by max-width/max-height
+    img.style.width = 'auto';
+    img.style.height = 'auto';
     if (expenseId) {
-        console.log("Fetching image for expense ID:", expenseId, "with token:", token);
         fetch(`http://localhost:8080/api/expenses/${expenseId}/images?index=0`, {
             headers: { "Authorization": `Bearer ${token}` }
         })
@@ -645,18 +722,15 @@ function showExpenseImage(expenseId) {
         .then(blob => {
             img.src = URL.createObjectURL(blob);
             popup.style.display = "flex";
-            // Add keyboard listener for this popup instance
             document.addEventListener('keydown', handleKeyZoom);
         })
         .catch(error => {
-            console.error("Error loading image for expense ID " + expenseId + ":", error);
-            alert("Failed to load image for expense ID " + expenseId + ": " + error.message);
+            showToast("Failed to load image: " + error.message);
         });
     } else {
         img.src = '';
         popup.style.display = "flex";
     }
-    // Add drag listeners
     img.addEventListener('mousedown', startDragging);
     img.addEventListener('mousemove', drag);
     img.addEventListener('mouseup', stopDragging);
@@ -666,10 +740,9 @@ function showExpenseImage(expenseId) {
 function zoomImage(direction) {
     const img = document.getElementById("popup-expense-img");
     let newZoom = zoomLevel + (direction === 'in' ? 0.1 : -0.1);
-    newZoom = Math.max(0.5, Math.min(3, newZoom)); // Limit 0.5x to 3x
+    newZoom = Math.max(0.5, Math.min(3, newZoom));
     if (newZoom !== zoomLevel) {
         zoomLevel = newZoom;
-        // Adjust pan to maintain centering during zoom
         const rect = img.getBoundingClientRect();
         const container = img.parentElement.getBoundingClientRect();
         const centerX = (container.width - rect.width) / 2 + panX;
@@ -678,10 +751,9 @@ function zoomImage(direction) {
         panX = centerX * (1 - scaleFactor);
         panY = centerY * (1 - scaleFactor);
         img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-        // Visual feedback for zoom limits
         if (zoomLevel <= 0.5 || zoomLevel >= 3) {
             img.style.opacity = '0.7';
-            setTimeout(() => img.style.opacity = '1', 200); // Flash effect
+            setTimeout(() => img.style.opacity = '1', 200);
         }
     }
 }
@@ -694,7 +766,7 @@ function handleKeyZoom(event) {
 }
 
 function startDragging(event) {
-    if (zoomLevel > 1) { // Only allow dragging when zoomed in
+    if (zoomLevel > 1) {
         isDragging = true;
         const img = document.getElementById("popup-expense-img");
         img.style.cursor = 'grabbing';
@@ -734,56 +806,6 @@ function downloadImage() {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert("No image available to download.");
+        showToast("No image available to download.");
     }
-}
-
-async function updateRequest(index, status) {
-  try {
-    const budget = budgetRequests[index];
-    const response = await fetch(`http://localhost:8080/api/budgets/${budget.budgetId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "text/plain",
-        "Authorization": `Bearer ${token}`
-      },
-      body: status
-    });
-    if (response.ok) {
-      budgetRequests[index].status = status;
-      updateBudgetTable();
-    } else {
-      const data = await response.json();
-      alert(data.error || "Status update failed");
-    }
-  } catch {
-    alert("Update failed");
-  }
-}
-
-// =================== CHART ===================
-
-let pieChart;
-function updateChart() {
-  const ctx = document.getElementById("expenseChart").getContext("2d");
-  const categories = [...new Set(expenses.map(e => e.category))];
-  const amounts = categories.map(cat => expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0));
-
-  if (pieChart) pieChart.destroy();
-  pieChart = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: categories,
-      datasets: [{
-        data: amounts,
-        backgroundColor: ['#111', '#888', '#ccc', '#f46354']
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' }
-      }
-    }
-  });
 }
