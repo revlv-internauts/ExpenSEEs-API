@@ -8,6 +8,7 @@ let zoomLevel = 1;
 let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
+
 // =================== AUTH ===================
 
 async function login() {
@@ -187,12 +188,13 @@ async function deleteUser(index) {
     const user = users[index];
     const response = await fetch(`http://localhost:8080/api/admin/users/${user.userId}`, {
       method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
     if (response.ok) {
       users.splice(index, 1);
       updateUserTable();
       updateDashboard();
+      showToast("User deleted successfully"); // Optional: Add feedback
     } else {
       const data = await response.json();
       alert(data.error || "Delete failed");
@@ -247,7 +249,7 @@ function showUserDetails(index) {
   actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => closePopup(popup));
 }
 
-function confirmDeleteUser(popup) {
+function confirmDeleteUser(userPopup) {
   const confirmPopup = document.createElement("div");
   confirmPopup.className = "user-popup";
   confirmPopup.innerHTML = `
@@ -270,8 +272,12 @@ function confirmDeleteUser(popup) {
     const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
     deleteUser(actualIndex);
     closePopup(confirmPopup);
+    closePopup(userPopup); // Close user details popup
   });
-  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => closePopup(confirmPopup));
+  actionsDiv.querySelector("button:nth-child(2)").addEventListener("click", () => {
+    closePopup(confirmPopup);
+    closePopup(userPopup); // Close user details popup
+  });
 }
 
 function closePopup(popupElement = null) {
@@ -465,7 +471,6 @@ function showBudgetDetails(index) {
     document.getElementById("budgetPopup").style.display = "flex";
 }
 
-
 function closeBudgetPopup() {
     document.getElementById("budgetPopup").style.display = "none";
     selectedBudgetIndex = null;
@@ -613,7 +618,7 @@ function getSortedExpenses() {
             case "category":
                 return (a.category || '').localeCompare(b.category || '');
             case "user":
-                return (a.username || '').localeCompare(b.username || ''); // Changed from a.user?.username
+                return (a.username || '').localeCompare(b.username || '');
             default: // date
                 return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
         }
@@ -731,23 +736,6 @@ function downloadImage() {
     } else {
         alert("No image available to download.");
     }
-}
-
-function closePopup(popupElement = null) {
-    if (popupElement) {
-        popupElement.remove();
-    } else {
-        document.querySelectorAll(".user-popup").forEach(el => el.remove());
-        document.getElementById("expenseImagePopup").style.display = "none";
-        // Remove keyboard and drag listeners
-        document.removeEventListener('keydown', handleKeyZoom);
-        const img = document.getElementById("popup-expense-img");
-        img.removeEventListener('mousedown', startDragging);
-        img.removeEventListener('mousemove', drag);
-        img.removeEventListener('mouseup', stopDragging);
-        img.removeEventListener('mouseleave', stopDragging);
-    }
-    selectedUserIndex = null;
 }
 
 async function updateRequest(index, status) {
