@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/sign-in", "/api/forgotPassword/**", "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/funds/**", "/api/reports/**", "/api/forgotPassword/reset-password").authenticated()
+                        .requestMatchers("/api/users/{userId}/profile-picture").authenticated() // New endpoint
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
@@ -55,4 +56,3 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 }
-

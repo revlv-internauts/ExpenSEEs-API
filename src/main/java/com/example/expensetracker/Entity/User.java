@@ -27,8 +27,11 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column
+    private String profilePicturePath; // New field for profile picture
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore // Revert to original @JsonIgnore
+    @JsonIgnore
     private List<Expense> expenses;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
