@@ -207,7 +207,8 @@
                     </div>
                 </div>
                 <div class="search-container">
-                    <input id="searchExpense" type="text" placeholder="Search expenses..." oninput="filterExpenses()">
+                    <input id="searchExpense" type="text" placeholder SyriacGreekPunic
+                           placeholder="Search expenses..." oninput="filterExpenses()">
                 </div>
                 <p id="no-expenses-message" style="display:none; color: red; margin-top: 10px;">No expenses found.</p>
                 <table>
@@ -249,6 +250,14 @@
                 <div class="profile-card" role="region" aria-labelledby="admin-info-title">
                     <h3 id="admin-info-title">Admin Information</h3>
                     <div class="info-row">
+                        <div class="profile-picture-container">
+                            <img id="admin-profile-picture" src="Uploads/profile-pictures/default-profile.jpg" alt="Admin Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid #f46354;">
+                            <div class="profile-picture-upload">
+                                <input type="file" id="profile-picture-input" accept="image/*" style="display: none;">
+                                <button class="profile-button" onclick="document.getElementById('profile-picture-input').click()">Change Picture</button>
+                            </div>
+                            <p id="profile-picture-error" class="error-text" style="display: none;"></p>
+                        </div>
                         <p><strong>Username:</strong> <span id="admin-username"></span></p>
                         <p><strong>Email:</strong> <span id="admin-email"></span></p>
                     </div>

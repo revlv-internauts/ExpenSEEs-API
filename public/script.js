@@ -1,5 +1,4 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://localhost:8080" for local testing
-                                                 //"http://152.42.192.226:8080"; for server testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
 let users = [];
 let expenses = [];
 let budgetRequests = [];
@@ -14,6 +13,7 @@ let isDragging = false;
 let startX = 0, startY = 0;
 let categoryChart, userChart;
 let currentUser = null;
+let currentUserId = null; // To store the current user's ID
 
 // =================== AUTH ===================
 async function login() {
@@ -34,10 +34,16 @@ async function login() {
         if (response.ok && data.access_token) {
             if (username.toLowerCase() === "admin") {
                 token = data.access_token;
-                currentUser = { username, email: data.email || "admin@gmail.com" };
+                currentUser = {
+                    username,
+                    email: data.email || "admin@gmail.com",
+                    userId: data.user_id // Use user_id (snake_case) to match backend response
+                };
+                currentUserId = data.user_id; // Store user_id
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("dashboard").style.display = "flex";
                 updateDashboard();
+                loadProfilePicture(); // Load profile picture on login
             } else {
                 errorElement.textContent = "Access denied. Only the admin can log in.";
                 errorElement.style.display = "block";
@@ -55,10 +61,12 @@ async function login() {
 function logout() {
     token = null;
     currentUser = null;
+    currentUserId = null;
     document.getElementById("dashboard").style.display = "none";
     document.getElementById("login-screen").style.display = "flex";
     if (categoryChart) categoryChart.destroy();
     if (userChart) userChart.destroy();
+    document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
 }
 
 // =================== UI CONTROL ===================
@@ -87,10 +95,70 @@ function showProfile() {
     if (document.getElementById('profile').classList.contains('active') && currentUser) {
         document.getElementById('admin-username').textContent = currentUser.username || 'N/A';
         document.getElementById('admin-email').textContent = currentUser.email || 'N/A';
+        loadProfilePicture(); // Load profile picture when showing profile tab
     }
 }
 
-document.getElementById('admin-reset-password-form').addEventListener('submit', async (e) => {
+async function loadProfilePicture() {
+    if (!currentUserId || !token) return;
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/users/${currentUserId}/profile-picture`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const img = document.getElementById("admin-profile-picture");
+            img.src = URL.createObjectURL(blob);
+        } else {
+            // Fallback to default image if request fails
+            document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
+        }
+    } catch (error) {
+        console.error("Error loading profile picture:", error);
+        document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
+    }
+}
+
+async function uploadProfilePicture() {
+    const fileInput = document.getElementById("profile-picture-input");
+    const errorElement = document.getElementById("profile-picture-error");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    if (!fileInput.files[0]) {
+        errorElement.textContent = "Please select an image file";
+        errorElement.style.display = "block";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/users/${currentUserId}/profile-picture`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            showToast(data.message || "Profile picture uploaded successfully");
+            await loadProfilePicture(); // Refresh the picture
+            fileInput.value = ""; // Clear the input
+        } else {
+            errorElement.textContent = data.error || "Failed to upload profile picture";
+            errorElement.style.display = "block";
+        }
+    } catch (error) {
+        errorElement.textContent = "Network error: " + error.message;
+        errorElement.style.display = "block";
+    }
+}
+
+document.getElementById("admin-reset-password-form").addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitButton = e.target.querySelector('.profile-button');
     const errorElement = document.getElementById('admin-reset-error');
@@ -146,7 +214,7 @@ document.getElementById('admin-reset-password-form').addEventListener('submit', 
     }
 });
 
-document.getElementById('user-reset-password-form').addEventListener('submit', async (e) => {
+document.getElementById("user-reset-password-form").addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitButton = e.target.querySelector('.profile-button');
     const errorElement = document.getElementById('user-reset-error');
@@ -199,6 +267,9 @@ document.getElementById('user-reset-password-form').addEventListener('submit', a
         submitButton.disabled = false;
     }
 });
+
+// Add event listener for profile picture upload
+document.getElementById("profile-picture-input").addEventListener("change", uploadProfilePicture);
 
 // =================== USER MODAL ===================
 function openUserModal() {
