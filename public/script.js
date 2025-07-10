@@ -1,3 +1,5 @@
+const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://localhost:8080" for local testing
+                                                 //"http://152.42.192.226:8080"; for server testing
 let users = [];
 let expenses = [];
 let budgetRequests = [];
@@ -21,7 +23,7 @@ async function login() {
     errorElement.textContent = "";
 
     try {
-        const response = await fetch("http://localhost:8080/api/auth/sign-in", {
+        const response = await fetch(`${SERVER_URL}/api/auth/sign-in`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ usernameOrEmail: username, password })
@@ -91,21 +93,21 @@ async function updateDashboard() {
 
     try {
         // USERS
-        const usersRes = await fetch("http://localhost:8080/api/admin/users", {
+        const usersRes = await fetch(`${SERVER_URL}/api/admin/users`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const usersData = await usersRes.json();
         if (usersRes.ok) users = usersData;
 
         // EXPENSES
-        const expensesRes = await fetch("http://localhost:8080/api/expenses/all", {
+        const expensesRes = await fetch(`${SERVER_URL}/api/expenses/all`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const expensesData = await expensesRes.json();
         if (expensesRes.ok) expenses = expensesData;
 
         // BUDGET REQUESTS
-        const budgetRes = await fetch("http://localhost:8080/api/budgets", {
+        const budgetRes = await fetch(`${SERVER_URL}/api/budgets`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const budgetData = await budgetRes.json();
@@ -121,7 +123,7 @@ async function updateDashboard() {
         }
 
         // NOTIFICATIONS
-        const notificationsRes = await fetch("http://localhost:8080/api/admin/notifications", {
+        const notificationsRes = await fetch(`${SERVER_URL}/api/admin/notifications`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const notificationsData = await notificationsRes.json();
@@ -263,7 +265,7 @@ async function createUser() {
     }
 
     try {
-        const response = await fetch("http://localhost:8080/api/admin/users", {
+        const response = await fetch(`${SERVER_URL}/api/admin/users`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -290,7 +292,7 @@ async function createUser() {
 async function deleteUser(index) {
     try {
         const user = users[index];
-        const response = await fetch(`http://localhost:8080/api/admin/users/${user.userId}`, {
+        const response = await fetch(`${SERVER_URL}/api/admin/users/${user.userId}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -575,7 +577,7 @@ async function denyBudget() {
 async function updateBudgetStatus(status) {
     try {
         const budget = budgetRequests[selectedBudgetIndex];
-        const response = await fetch(`http://localhost:8080/api/budgets/${budget.budgetId}/status`, {
+        const response = await fetch(`${SERVER_URL}/api/budgets/${budget.budgetId}/status`, {
             method: "PUT",
             headers: {
                 "Content-Type": "text/plain",
@@ -712,7 +714,7 @@ function showExpenseImage(expenseId) {
     img.style.width = 'auto';
     img.style.height = 'auto';
     if (expenseId) {
-        fetch(`http://localhost:8080/api/expenses/${expenseId}/images?index=0`, {
+        fetch(`${SERVER_URL}/api/expenses/${expenseId}/images?index=0`, {
             headers: { "Authorization": `Bearer ${token}` }
         })
         .then(response => {
