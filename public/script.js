@@ -4,7 +4,6 @@ let expenses = [];
 let budgetRequests = [];
 let notifications = [];
 let token = null;
-let currentUser = null;
 let selectedUserIndex = null;
 let userDetailsPopup = null;
 let selectedBudgetIndex = null;
@@ -13,6 +12,7 @@ let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
 let categoryChart, userChart;
+let currentUser = null;
 
 // =================== AUTH ===================
 async function login() {
@@ -33,18 +33,13 @@ async function login() {
         if (response.ok && data.access_token) {
             if (username.toLowerCase() === "admin") {
                 token = data.access_token;
-                currentUser = { userId: data.user_id, username: data.username, email: data.email };
+                currentUser = { username, email: data.email || "admin@gmail.com" };
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("dashboard").style.display = "flex";
                 updateDashboard();
-                showTab('home'); // Ensure home is active on login
             } else {
-                token = data.access_token;
-                currentUser = { userId: data.user_id, username: data.username, email: data.email };
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("dashboard").style.display = "flex";
-                updateDashboard();
-                showTab('home'); // Ensure home is active on login
+                errorElement.textContent = "Access denied. Only the admin can log in.";
+                errorElement.style.display = "block";
             }
         } else {
             errorElement.textContent = data.error || "Login failed. Please check your credentials.";
@@ -72,6 +67,10 @@ function showTab(tabId) {
     document.getElementById(tabId).classList.add("active");
     if (tabId === 'profile' && currentUser) {
         showProfile();
+        document.getElementById('admin-reset-password-form').reset();
+        document.getElementById('user-reset-password-form').reset();
+        document.getElementById('admin-reset-error').style.display = 'none';
+        document.getElementById('user-reset-error').style.display = 'none';
     }
 }
 
@@ -82,23 +81,38 @@ function toggleSidebar() {
     content.classList.toggle("content-shift");
 }
 
-// =================== PROFILE FUNCTIONS ===================
+// =================== PROFILE ===================
 function showProfile() {
-    if (document.getElementById('profile').classList.contains('active')) {
-        document.getElementById('admin-username').textContent = currentUser.username;
-        document.getElementById('admin-email').textContent = currentUser.email;
+    if (document.getElementById('profile').classList.contains('active') && currentUser) {
+        document.getElementById('admin-username').textContent = currentUser.username || 'N/A';
+        document.getElementById('admin-email').textContent = currentUser.email || 'N/A';
     }
 }
 
 document.getElementById('admin-reset-password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitButton = e.target.querySelector('.profile-button');
+    const errorElement = document.getElementById('admin-reset-error');
+    errorElement.style.display = 'none';
+    errorElement.textContent = '';
+    submitButton.disabled = true;
+
     const email = document.getElementById('admin-email').textContent;
     const currentPassword = document.getElementById('admin-current-password').value;
     const newPassword = document.getElementById('admin-new-password').value;
     const confirmPassword = document.getElementById('admin-confirm-password').value;
 
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        errorElement.textContent = 'All fields are required';
+        errorElement.style.display = 'block';
+        submitButton.disabled = false;
+        return;
+    }
+
     if (newPassword !== confirmPassword) {
-        showToast('Passwords do not match');
+        errorElement.textContent = 'Passwords do not match';
+        errorElement.style.display = 'block';
+        submitButton.disabled = false;
         return;
     }
 
@@ -111,36 +125,49 @@ document.getElementById('admin-reset-password-form').addEventListener('submit', 
             },
             body: JSON.stringify({
                 currentPassword,
-                password: newPassword,
+                newPassword,
                 repeatPassword: confirmPassword
             })
         });
         const result = await response.json();
         if (response.ok) {
             showToast(result.message || 'Password reset successfully');
-            document.getElementById('admin-reset-password-form').reset();
+            e.target.reset();
         } else {
-            showToast(result.error || 'Failed to reset password');
+            errorElement.textContent = result.error || 'Failed to reset password';
+            errorElement.style.display = 'block';
         }
     } catch (error) {
-        showToast('Network error: ' + error.message);
+        errorElement.textContent = 'Network error: ' + error.message;
+        errorElement.style.display = 'block';
+    } finally {
+        submitButton.disabled = false;
     }
 });
 
 document.getElementById('user-reset-password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitButton = e.target.querySelector('.profile-button');
+    const errorElement = document.getElementById('user-reset-error');
+    errorElement.style.display = 'none';
+    errorElement.textContent = '';
+    submitButton.disabled = true;
+
     const email = document.getElementById('user-email').value;
-    const currentPassword = document.getElementById('user-current-password').value;
     const newPassword = document.getElementById('user-new-password').value;
     const confirmPassword = document.getElementById('user-confirm-password').value;
 
-    if (newPassword !== confirmPassword) {
-        showToast('Passwords do not match');
+    if (!email || !newPassword || !confirmPassword) {
+        errorElement.textContent = 'All fields are required';
+        errorElement.style.display = 'block';
+        submitButton.disabled = false;
         return;
     }
 
-    if (currentUser.email !== email && currentUser.username.toLowerCase() !== 'admin') {
-        showToast('Unauthorized: You can only reset your own password');
+    if (newPassword !== confirmPassword) {
+        errorElement.textContent = 'Passwords do not match';
+        errorElement.style.display = 'block';
+        submitButton.disabled = false;
         return;
     }
 
@@ -152,20 +179,23 @@ document.getElementById('user-reset-password-form').addEventListener('submit', a
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                currentPassword: currentPassword,
-                newPassword: newPassword,
+                newPassword,
                 repeatPassword: confirmPassword
             })
         });
         const result = await response.json();
         if (response.ok) {
             showToast(result.message || 'Password reset successfully');
-            document.getElementById('user-reset-password-form').reset();
+            e.target.reset();
         } else {
-            showToast(result.error || 'Failed to reset password');
+            errorElement.textContent = result.error || 'Failed to reset password';
+            errorElement.style.display = 'block';
         }
     } catch (error) {
-        showToast('Network error: ' + error.message);
+        errorElement.textContent = 'Network error: ' + error.message;
+        errorElement.style.display = 'block';
+    } finally {
+        submitButton.disabled = false;
     }
 });
 
@@ -242,6 +272,7 @@ async function updateDashboard() {
         updateUserTable();
         updateBudgetTable();
         updateExpenseTable();
+        showProfile();
     } catch (error) {
         showToast("Dashboard error: " + error.message);
     }
@@ -447,11 +478,11 @@ function showUserDetails(index) {
 
 function confirmDeleteUser() {
     const confirmPopup = document.getElementById("confirmModal");
-    if (selectedUserIndex !== null) {
-        const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
-        const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
-        deleteUser(actualIndex);
-    }
+    confirmPopup.style.display = "flex";
+}
+
+function cancelDeleteUser() {
+    const confirmPopup = document.getElementById("confirmModal");
     confirmPopup.style.display = "none";
     if (userDetailsPopup) {
         userDetailsPopup.remove();
@@ -459,8 +490,13 @@ function confirmDeleteUser() {
     }
 }
 
-function cancelDeleteUser() {
+function confirmDeleteUser() {
     const confirmPopup = document.getElementById("confirmModal");
+    if (selectedUserIndex !== null) {
+        const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
+        const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
+        deleteUser(actualIndex);
+    }
     confirmPopup.style.display = "none";
     if (userDetailsPopup) {
         userDetailsPopup.remove();
