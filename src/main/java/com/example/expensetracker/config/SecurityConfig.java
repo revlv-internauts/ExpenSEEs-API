@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/sign-in", "/api/forgotPassword/**", "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/funds/**", "/api/reports/**").authenticated()
+                        .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/funds/**", "/api/reports/**", "/api/forgotPassword/reset-password").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

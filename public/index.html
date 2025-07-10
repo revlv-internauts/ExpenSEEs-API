@@ -7,88 +7,6 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .status-badge {
-            padding: 0.3rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: white;
-        }
-        .badge-pending { background: #f0ad4e; }
-        .badge-approved { background: #5cb85c; }
-        .badge-denied { background: #d9534f; }
-
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #e57373, #ff9999);
-            color: #fff;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            opacity: 0;
-            animation: fadeInOut 4s forwards;
-            z-index: 3000;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        .user-details {
-            display: none;
-            margin-top: 1rem;
-            padding: 1rem;
-            background: linear-gradient(135deg, #fff5f5, #f5f5f5);
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .modal-confirm {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 3000;
-        }
-
-        .modal-confirm-content {
-            background: linear-gradient(135deg, #fff5f5, #f5f5f5);
-            padding: 2rem;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 0 10px rgba(0,0,0,0.25);
-        }
-
-        .modal-confirm-content button {
-            margin: 0 0.5rem;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .confirm-delete { background: #d9534f; color: white; }
-        .cancel-delete { background: #ccc; }
-
-        .modal-content input {
-            width: 100%;
-            padding: 0.5rem;
-            margin: 0.5rem 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-    </style>
 </head>
 <body>
 <div id="login-screen" class="login-bg">
@@ -115,6 +33,7 @@
             <li onclick="showTab('users')"><i class="fa-solid fa-users"></i> Users</li>
             <li onclick="showTab('budgets')"><i class="fa-solid fa-wallet"></i> Budget Requests</li>
             <li onclick="showTab('expenses')"><i class="fa-solid fa-money-bill"></i> Expenses</li>
+            <li onclick="showTab('profile')"><i class="fa-solid fa-user"></i> Profile</li>
             <li onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Logout</li>
         </ul>
     </div>
@@ -258,6 +177,58 @@
                         Close
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <div id="profile" class="tab">
+            <header>
+                <h2>Profile</h2>
+            </header>
+            <div class="tab-section">
+                <h3>Admin Information</h3>
+                <div class="info-row">
+                    <p><strong>Username:</strong> <span id="admin-username"></span></p>
+                    <p><strong>Email:</strong> <span id="admin-email"></span></p>
+                </div>
+            </div>
+            <div class="tab-section">
+                <h3>Reset Your Password</h3>
+                <form id="admin-reset-password-form" class="tab-form">
+                    <input type="password" id="admin-current-password" placeholder="Current Password" required>
+                    <div class="password-container">
+                        <input type="password" id="admin-new-password" placeholder="New Password" required>
+                        <span class="toggle-password" onclick="togglePassword('admin-new-password', this)">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </span>
+                    </div>
+                    <div class="password-container">
+                        <input type="password" id="admin-confirm-password" placeholder="Confirm Password" required>
+                        <span class="toggle-password" onclick="togglePassword('admin-confirm-password', this)">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </span>
+                    </div>
+                    <button type="submit" class="tab-button">Reset Password</button>
+                </form>
+            </div>
+            <div class="tab-section">
+                <h3>Reset User Password (Admin Only)</h3>
+                <form id="user-reset-password-form" class="tab-form">
+                    <input type="email" id="user-email" placeholder="User Email" required>
+                    <input type="password" id="user-current-password" placeholder="Current Password" style="display: none;" required> <!-- Hidden for non-admin use -->
+                    <div class="password-container">
+                        <input type="password" id="user-new-password" placeholder="New Password" required>
+                        <span class="toggle-password" onclick="togglePassword('user-new-password', this)">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </span>
+                    </div>
+                    <div class="password-container">
+                        <input type="password" id="user-confirm-password" placeholder="Confirm Password" required>
+                        <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </span>
+                    </div>
+                    <button type="submit" class="tab-button">Reset User Password</button>
+                </form>
             </div>
         </div>
 

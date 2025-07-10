@@ -1,10 +1,10 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://localhost:8080" for local testing
-                                                 //"http://152.42.192.226:8080"; for server testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
 let users = [];
 let expenses = [];
 let budgetRequests = [];
 let notifications = [];
 let token = null;
+let currentUser = null;
 let selectedUserIndex = null;
 let userDetailsPopup = null;
 let selectedBudgetIndex = null;
@@ -33,12 +33,18 @@ async function login() {
         if (response.ok && data.access_token) {
             if (username.toLowerCase() === "admin") {
                 token = data.access_token;
+                currentUser = { userId: data.user_id, username: data.username, email: data.email };
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("dashboard").style.display = "flex";
                 updateDashboard();
+                showTab('home'); // Ensure home is active on login
             } else {
-                errorElement.textContent = "Access denied. Only the admin can log in.";
-                errorElement.style.display = "block";
+                token = data.access_token;
+                currentUser = { userId: data.user_id, username: data.username, email: data.email };
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("dashboard").style.display = "flex";
+                updateDashboard();
+                showTab('home'); // Ensure home is active on login
             }
         } else {
             errorElement.textContent = data.error || "Login failed. Please check your credentials.";
@@ -52,6 +58,7 @@ async function login() {
 
 function logout() {
     token = null;
+    currentUser = null;
     document.getElementById("dashboard").style.display = "none";
     document.getElementById("login-screen").style.display = "flex";
     if (categoryChart) categoryChart.destroy();
@@ -63,6 +70,9 @@ function showTab(tabId) {
     const tabs = document.querySelectorAll(".tab");
     tabs.forEach(tab => tab.classList.remove("active"));
     document.getElementById(tabId).classList.add("active");
+    if (tabId === 'profile' && currentUser) {
+        showProfile();
+    }
 }
 
 function toggleSidebar() {
@@ -71,6 +81,93 @@ function toggleSidebar() {
     sidebar.classList.toggle("active");
     content.classList.toggle("content-shift");
 }
+
+// =================== PROFILE FUNCTIONS ===================
+function showProfile() {
+    if (document.getElementById('profile').classList.contains('active')) {
+        document.getElementById('admin-username').textContent = currentUser.username;
+        document.getElementById('admin-email').textContent = currentUser.email;
+    }
+}
+
+document.getElementById('admin-reset-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('admin-email').textContent;
+    const currentPassword = document.getElementById('admin-current-password').value;
+    const newPassword = document.getElementById('admin-new-password').value;
+    const confirmPassword = document.getElementById('admin-confirm-password').value;
+
+    if (newPassword !== confirmPassword) {
+        showToast('Passwords do not match');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/forgotPassword/reset-password?email=${encodeURIComponent(email)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                currentPassword,
+                password: newPassword,
+                repeatPassword: confirmPassword
+            })
+        });
+        const result = await response.json();
+        if (response.ok) {
+            showToast(result.message || 'Password reset successfully');
+            document.getElementById('admin-reset-password-form').reset();
+        } else {
+            showToast(result.error || 'Failed to reset password');
+        }
+    } catch (error) {
+        showToast('Network error: ' + error.message);
+    }
+});
+
+document.getElementById('user-reset-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('user-email').value;
+    const currentPassword = document.getElementById('user-current-password').value;
+    const newPassword = document.getElementById('user-new-password').value;
+    const confirmPassword = document.getElementById('user-confirm-password').value;
+
+    if (newPassword !== confirmPassword) {
+        showToast('Passwords do not match');
+        return;
+    }
+
+    if (currentUser.email !== email && currentUser.username.toLowerCase() !== 'admin') {
+        showToast('Unauthorized: You can only reset your own password');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/forgotPassword/reset-password?email=${encodeURIComponent(email)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                currentPassword: currentPassword,
+                newPassword: newPassword,
+                repeatPassword: confirmPassword
+            })
+        });
+        const result = await response.json();
+        if (response.ok) {
+            showToast(result.message || 'Password reset successfully');
+            document.getElementById('user-reset-password-form').reset();
+        } else {
+            showToast(result.error || 'Failed to reset password');
+        }
+    } catch (error) {
+        showToast('Network error: ' + error.message);
+    }
+});
 
 // =================== USER MODAL ===================
 function openUserModal() {
@@ -350,11 +447,11 @@ function showUserDetails(index) {
 
 function confirmDeleteUser() {
     const confirmPopup = document.getElementById("confirmModal");
-    confirmPopup.style.display = "flex";
-}
-
-function cancelDeleteUser() {
-    const confirmPopup = document.getElementById("confirmModal");
+    if (selectedUserIndex !== null) {
+        const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
+        const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
+        deleteUser(actualIndex);
+    }
     confirmPopup.style.display = "none";
     if (userDetailsPopup) {
         userDetailsPopup.remove();
@@ -362,13 +459,8 @@ function cancelDeleteUser() {
     }
 }
 
-function confirmDeleteUser() {
+function cancelDeleteUser() {
     const confirmPopup = document.getElementById("confirmModal");
-    if (selectedUserIndex !== null) {
-        const filtered = users.filter(u => u.username?.toLowerCase() !== "admin");
-        const actualIndex = users.findIndex(u => u.userId === filtered[selectedUserIndex].userId);
-        deleteUser(actualIndex);
-    }
     confirmPopup.style.display = "none";
     if (userDetailsPopup) {
         userDetailsPopup.remove();

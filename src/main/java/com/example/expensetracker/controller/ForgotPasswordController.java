@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +22,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/forgotPassword")
@@ -41,8 +42,6 @@ public class ForgotPasswordController {
 
     @Value("${otp.expiration.minutes:20}")
     private int otpExpirationMinutes;
-
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$");
 
     @PostMapping("/verifyMail")
     @Transactional
@@ -130,12 +129,6 @@ public class ForgotPasswordController {
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
-        if (!PASSWORD_PATTERN.matcher(password).matches()) {
-            response.put("status", "error");
-            response.put("message", "Password must be at least 8 characters long and include a number and a special character");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-        }
-
         String encodedPassword = passwordEncoder.encode(password);
         userRepository.updatePassword(email, encodedPassword);
         forgotPasswordRepository.deleteById(fp.getForgotPasswordId());
@@ -167,5 +160,67 @@ public class ForgotPasswordController {
     private Integer otpGenerator() {
         Random random = new Random();
         return random.nextInt(100_000, 999_999);
+    }
+
+    @PostMapping("/reset-password")
+    @Transactional
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ChangePassword changePassword,
+                                                             @RequestParam("email") String email) {
+        Map<String, String> response = new HashMap<>();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    response.put("error", "Invalid email: " + email);
+                    return new UsernameNotFoundException("Invalid email");
+                });
+
+        String currentUsername = getCurrentUsername();
+        User currentUser = userRepository.findByUsername(currentUsername);
+        if (currentUser == null) {
+            response.put("error", "Current user not authenticated");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            // Non-admin can only reset their own password
+            if (!currentUser.getEmail().equals(email)) {
+                response.put("error", "Unauthorized: You can only reset your own password");
+                return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+            }
+            if (changePassword.currentPassword() == null) {
+                response.put("error", "Current password is required");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+            if (!passwordEncoder.matches(changePassword.currentPassword(), currentUser.getPassword())) {
+                response.put("error", "Current password is incorrect");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            // Admin can reset any password without currentPassword
+            if (changePassword.currentPassword() != null && !passwordEncoder.matches(changePassword.currentPassword(), currentUser.getPassword())) {
+                response.put("error", "Admin provided incorrect current password (optional for admins)");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        if (!changePassword.newPassword().equals(changePassword.repeatPassword())) {
+            response.put("error", "Passwords do not match");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        String encodedPassword = passwordEncoder.encode(changePassword.newPassword());
+        userRepository.updatePassword(email, encodedPassword);
+        response.put("message", "Password reset successfully!");
+        return ResponseEntity.ok(response);
+    }
+
+    private String getCurrentUsername() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        throw new IllegalStateException("User not authenticated");
     }
 }
