@@ -309,7 +309,7 @@ tbody tr:hover {
 
 .toggle-password {
     position: absolute;
-    right: 40px;
+    right: 30px;
     top: 13px;
     cursor: pointer;
     font-size: 1rem;
