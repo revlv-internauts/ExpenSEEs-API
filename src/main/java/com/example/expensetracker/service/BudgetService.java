@@ -32,14 +32,32 @@ public class BudgetService {
     private UserRepository userRepository;
 
     public SubmittedBudget createBudget(SubmittedBudget budget) {
+        if (budget == null || budget.getName() == null || budget.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Budget name cannot be empty");
+        }
+        if (budget.getBudgetDate() == null) {
+            throw new IllegalArgumentException("Budget date is required");
+        }
+        if (budget.getExpenses() == null || budget.getExpenses().isEmpty()) {
+            throw new IllegalArgumentException("Budget must include at least one expense item");
+        }
+
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username);
-        if (user == null) throw new UsernameNotFoundException("User not found: " + username);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
 
         budget.setUser(user);
-        budget.setTotal(budget.getExpenses().stream()
-                .mapToDouble(item -> item.getQuantity() * item.getAmountPerUnit())
-                .sum());
+        double total = budget.getExpenses().stream()
+                .mapToDouble(item -> {
+                    if (item.getQuantity() <= 0 || item.getAmountPerUnit() <= 0) {
+                        throw new IllegalArgumentException("Expense item quantity and amount per unit must be positive");
+                    }
+                    return item.getQuantity() * item.getAmountPerUnit();
+                })
+                .sum();
+        budget.setTotal(total);
         budget.setStatus(SubmittedBudget.Status.PENDING);
         budget.setExpenses(budget.getExpenses().stream()
                 .peek(item -> item.setBudget(budget))
@@ -49,7 +67,9 @@ public class BudgetService {
 
     public List<SubmittedBudget> getAllBudgets() {
         User user = userRepository.findByUsername(getCurrentUsername());
-        if (user == null) throw new UsernameNotFoundException("User not found");
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
         if (isAdmin) {
@@ -60,8 +80,31 @@ public class BudgetService {
                 .toList();
     }
 
+    public ResponseEntity<SubmittedBudget> getBudgetById(Long budgetId) {
+        if (budgetId == null) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+        User currentUser = userRepository.findByUsername(getCurrentUsername());
+        if (currentUser == null) {
+            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
+        }
+        if (budgetRepository.findById(budgetId).isEmpty()) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        }
+        SubmittedBudget budget = budgetRepository.findById(budgetId).get();
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !budget.getUser().getUserId().equals(currentUser.getUserId())) {
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        }
+        return new ResponseEntity<>(budget, HttpStatus.OK);
+    }
+
     @Transactional
     public ResponseEntity<String> updateBudgetStatus(Long budgetId, SubmittedBudget.Status status) {
+        if (budgetId == null) {
+            return new ResponseEntity<>("Budget ID is required", HttpStatus.BAD_REQUEST);
+        }
         User currentUser = userRepository.findByUsername(getCurrentUsername());
         if (currentUser == null) {
             return new ResponseEntity<>("User not found", HttpStatus.UNAUTHORIZED);
@@ -75,21 +118,16 @@ public class BudgetService {
             return new ResponseEntity<>("Budget not found", HttpStatus.NOT_FOUND);
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
-        // Check if the budget status is already APPROVED or DENIED
-        if (budget.getStatus() == SubmittedBudget.Status.APPROVED || budget.getStatus() == SubmittedBudget.Status.DENIED) {
-            return new ResponseEntity<>("Budget status is final and cannot be changed", HttpStatus.FORBIDDEN);
-        }
-        // Only allow update if status is PENDING
-        if (budget.getStatus() == SubmittedBudget.Status.PENDING) {
-            budget.setStatus(status);
-            budgetRepository.save(budget);
-            return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Invalid status transition", HttpStatus.BAD_REQUEST);
+        budget.setStatus(status);
+        budgetRepository.save(budget);
+        return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
 
     @Transactional
     public ResponseEntity<String> associateExpenseWithBudget(Long budgetId, Long expenseId) {
+        if (budgetId == null || expenseId == null) {
+            return new ResponseEntity<>("Budget ID and Expense ID are required", HttpStatus.BAD_REQUEST);
+        }
         User currentUser = userRepository.findByUsername(getCurrentUsername());
         if (currentUser == null) {
             return new ResponseEntity<>("User not found", HttpStatus.UNAUTHORIZED);
@@ -117,23 +155,6 @@ public class BudgetService {
         budget.setTotal(budget.getTotal() + expense.getAmount());
         budgetRepository.save(budget);
         return new ResponseEntity<>("Expense associated with budget successfully", HttpStatus.OK);
-    }
-
-    public ResponseEntity<SubmittedBudget> getBudgetById(Long budgetId) {
-        User currentUser = userRepository.findByUsername(getCurrentUsername());
-        if (currentUser == null) {
-            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
-        }
-        if (budgetRepository.findById(budgetId).isEmpty()) {
-            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-        }
-        SubmittedBudget budget = budgetRepository.findById(budgetId).get();
-        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
-                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin && !budget.getUser().getUserId().equals(currentUser.getUserId())) {
-            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
-        }
-        return new ResponseEntity<>(budget, HttpStatus.OK);
     }
 
     private String getCurrentUsername() {

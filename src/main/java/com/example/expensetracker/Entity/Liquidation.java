@@ -17,38 +17,43 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SubmittedBudget {
+public class Liquidation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long budgetId;
+    private Long liquidationId;
 
     @Column(nullable = false)
-    private String name;
+    private Double totalSpent;
 
     @Column(nullable = false)
-    private LocalDate budgetDate;
-
-    @Column(nullable = false)
-    private Double total;
+    private Double remainingBalance;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
 
     @Column(nullable = false)
+    private LocalDate dateOfTransaction;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "budget", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<ExpenseItem> expenses = new ArrayList<>();
+    private List<LiquidationExpenseItem> expenses = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "submitted_budget_id")
+    @JsonIgnore
+    private SubmittedBudget submittedBudget;
+
     public enum Status {
-        PENDING, RELEASED, DENIED
+        PENDING, LIQUIDATED, DENIED
     }
 
     @JsonProperty("username")
