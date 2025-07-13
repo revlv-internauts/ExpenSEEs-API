@@ -102,7 +102,7 @@ public class LiquidationService {
     }
 
     @Transactional
-    public ResponseEntity<String> updateLiquidationStatus(Long liquidationId, Liquidation.Status status) {
+    public ResponseEntity<String> updateLiquidationStatus(Long liquidationId, Liquidation.Status status, String remarks) {
         if (liquidationId == null) {
             return new ResponseEntity<>("Liquidation ID is required", HttpStatus.BAD_REQUEST);
         }
@@ -120,9 +120,12 @@ public class LiquidationService {
         }
         Liquidation liquidation = liquidationRepository.findById(liquidationId).get();
         liquidation.setStatus(status);
+        liquidation.setRemarks(remarks); // Save remarks if provided, null otherwise
         liquidationRepository.save(liquidation);
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
+
+
     public Liquidation getLiquidationById(Long liquidationId) {
         Liquidation liquidation = liquidationRepository.findById(liquidationId)
                 .orElseThrow(() -> new IllegalArgumentException("Liquidation not found with ID: " + liquidationId));

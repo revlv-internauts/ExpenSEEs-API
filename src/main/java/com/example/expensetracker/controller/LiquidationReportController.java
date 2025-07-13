@@ -145,15 +145,21 @@ public class LiquidationReportController {
     }
 
     @PutMapping("/{liquidationId}/status")
-    public ResponseEntity<Map<String, String>> updateLiquidationStatus(@PathVariable Long liquidationId, @RequestBody String status) {
+    public ResponseEntity<Map<String, String>> updateLiquidationStatus(@PathVariable Long liquidationId, @RequestBody Map<String, String> request) {
         Map<String, String> response = new HashMap<>();
         try {
+            String status = request.get("status");
+            String remarks = request.get("remarks"); // Optional remarks
+            if (status == null || status.trim().isEmpty()) {
+                response.put("error", "Status is required");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
             Liquidation.Status enumStatus = Liquidation.Status.valueOf(status.toUpperCase());
-            ResponseEntity<String> result = liquidationService.updateLiquidationStatus(liquidationId, enumStatus);
+            ResponseEntity<String> result = liquidationService.updateLiquidationStatus(liquidationId, enumStatus, remarks);
             response.put("message", result.getBody());
             return new ResponseEntity<>(response, result.getStatusCode());
         } catch (IllegalArgumentException e) {
-            response.put("error", "Invalid status: " + status);
+            response.put("error", "Invalid status: " + request.get("status"));
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             response.put("error", "Failed to update liquidation status: " + e.getMessage());

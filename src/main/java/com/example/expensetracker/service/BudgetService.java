@@ -101,7 +101,7 @@ public class BudgetService {
     }
 
     @Transactional
-    public ResponseEntity<String> updateBudgetStatus(Long budgetId, SubmittedBudget.Status status) {
+    public ResponseEntity<String> updateBudgetStatus(Long budgetId, SubmittedBudget.Status status, String remarks) {
         if (budgetId == null) {
             return new ResponseEntity<>("Budget ID is required", HttpStatus.BAD_REQUEST);
         }
@@ -119,6 +119,7 @@ public class BudgetService {
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
         budget.setStatus(status);
+        budget.setRemarks(remarks); // Save remarks if provided, null otherwise
         budgetRepository.save(budget);
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }

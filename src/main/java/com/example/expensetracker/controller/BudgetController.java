@@ -65,15 +65,21 @@ public class BudgetController {
     }
 
     @PutMapping("/{budgetId}/status")
-    public ResponseEntity<Map<String, String>> updateBudgetStatus(@PathVariable Long budgetId, @RequestBody String status) {
+    public ResponseEntity<Map<String, String>> updateBudgetStatus(@PathVariable Long budgetId, @RequestBody Map<String, String> request) {
         Map<String, String> response = new HashMap<>();
         try {
+            String status = request.get("status");
+            String remarks = request.get("remarks"); // Optional remarks
+            if (status == null || status.trim().isEmpty()) {
+                response.put("error", "Status is required");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
             SubmittedBudget.Status enumStatus = SubmittedBudget.Status.valueOf(status.toUpperCase());
-            ResponseEntity<String> result = budgetService.updateBudgetStatus(budgetId, enumStatus);
+            ResponseEntity<String> result = budgetService.updateBudgetStatus(budgetId, enumStatus, remarks);
             response.put("message", result.getBody());
             return new ResponseEntity<>(response, result.getStatusCode());
         } catch (IllegalArgumentException e) {
-            response.put("error", "Invalid status: " + status);
+            response.put("error", "Invalid status: " + request.get("status"));
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             response.put("error", "Failed to update budget status: " + e.getMessage());

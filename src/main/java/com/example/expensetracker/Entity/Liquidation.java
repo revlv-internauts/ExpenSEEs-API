@@ -32,6 +32,9 @@ public class Liquidation {
     @Column(nullable = false)
     private Status status;
 
+    @Column(nullable = true) // Remarks are optional
+    private String remarks;
+
     @Column(nullable = false)
     private LocalDate dateOfTransaction;
 
