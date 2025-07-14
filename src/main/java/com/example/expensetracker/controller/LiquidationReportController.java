@@ -4,7 +4,11 @@ import com.example.expensetracker.Entity.Liquidation;
 import com.example.expensetracker.Entity.LiquidationExpenseItem;
 import com.example.expensetracker.service.LiquidationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -163,6 +167,46 @@ public class LiquidationReportController {
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             response.put("error", "Failed to update liquidation status: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{liquidationId}/images")
+    public ResponseEntity<?> getLiquidationImages(@PathVariable Long liquidationId, @RequestParam(value = "index", defaultValue = "0") int index) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Liquidation liquidation = liquidationService.getLiquidationById(liquidationId);
+            if (liquidation == null || liquidation.getExpenses().isEmpty()) {
+                response.put("error", "No expenses found for liquidation " + liquidationId);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+            List<LiquidationExpenseItem> expenseItems = liquidation.getExpenses();
+            List<String> imagePaths = expenseItems.get(0).getImagePaths(); // Assume first expense item for simplicity
+
+            if (imagePaths == null || imagePaths.isEmpty() || index < 0 || index >= imagePaths.size()) {
+                response.put("error", "No image found at index " + index + " for liquidation " + liquidationId);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+
+            String imagePath = imagePaths.get(index);
+            File file = new File(imagePath);
+            if (!file.exists() || !file.isFile()) {
+                response.put("error", "Image file not found: " + imagePath);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+
+            Resource resource = new FileSystemResource(file);
+            String contentType = Files.probeContentType(file.toPath());
+            if (contentType == null) {
+                contentType = "image/jpeg"; // Default to JPEG
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                    .body(resource);
+        } catch (IOException e) {
+            response.put("error", "Failed to retrieve image: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

@@ -1,4 +1,4 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
                                             // Change to "http://localhost:8080" for local testing
 let users = [];
 let expenses = [];
@@ -784,7 +784,7 @@ async function updateBudgetStatus(status) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             },
-            body: status
+            body: JSON.stringify({ status }) // Send as { "status": "RELEASED" }
         });
         const data = await response.json();
         if (response.ok) {
