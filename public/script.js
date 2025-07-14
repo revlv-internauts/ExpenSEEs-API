@@ -338,7 +338,7 @@ async function updateDashboard() {
         }
 
         // UPDATE UI
-        document.querySelector(".balance-card h1").textContent = `₱${(budgetRequests.filter(b => b.status === "APPROVED").reduce((sum, b) => sum + (b.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.querySelector(".balance-card h1").textContent = `₱${(budgetRequests.filter(b => b.status === "RELEASED").reduce((sum, b) => sum + (b.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
         updateNotifications();
         updateCharts();
@@ -640,7 +640,7 @@ function updateBudgetTable() {
         sortedBudgets.forEach((req, index) => {
             const row = document.createElement("tr");
             const statusClass = req.status === "PENDING" ? "badge-pending" :
-                              req.status === "APPROVED" ? "badge-approved" :
+                              req.status === "RELEASED" ? "badge-released" :
                               "badge-denied";
             row.innerHTML = `
                 <td>${req.username}</td>
@@ -677,7 +677,7 @@ function updateBudgetTable() {
             groupedBudgets[groupKey].forEach(req => {
                 const row = document.createElement("tr");
                 const statusClass = req.status === "PENDING" ? "badge-pending" :
-                                  req.status === "APPROVED" ? "badge-approved" :
+                                  req.status === "RELEASED" ? "badge-released" :
                                   "badge-denied";
                 row.innerHTML = `
                     <td>${req.username}</td>
@@ -724,7 +724,7 @@ function showBudgetDetails(index) {
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${(budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "APPROVED" ? "badge-approved" : "badge-denied"}" style="word-break: break-word;">${budget.status || 'PENDING'}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "RELEASED" ? "badge-released" : "badge-denied"}" style="word-break: break-word;">${budget.status || 'PENDING'}</span>
         </div>
         <h4 style="margin: 1rem 0;">Associated Expense Items:</h4>
         ${budget.expenses && budget.expenses.length > 0 ? `
@@ -753,7 +753,7 @@ function showBudgetDetails(index) {
     `;
 
     actionsDiv.innerHTML = isPending ? `
-        <button onclick="approveBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Approve</button>
+        <button onclick="releaseBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Release</button>
         <button onclick="denyBudget()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
     ` : ``;
 
@@ -765,9 +765,9 @@ function closeBudgetPopup() {
     selectedBudgetIndex = null;
 }
 
-async function approveBudget() {
+async function releaseBudget() {
     if (selectedBudgetIndex === null) return;
-    await updateBudgetStatus("APPROVED");
+    await updateBudgetStatus("RELEASED");
 }
 
 async function denyBudget() {
