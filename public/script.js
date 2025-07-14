@@ -781,7 +781,7 @@ async function updateBudgetStatus(status) {
         const response = await fetch(`${SERVER_URL}/api/budgets/${budget.budgetId}/status`, {
             method: "PUT",
             headers: {
-                "Content-Type": "text/plain",
+                "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             },
             body: status
