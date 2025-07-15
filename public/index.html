@@ -18,6 +18,7 @@
         .badge-pending { background: #f0ad4e; }
         .badge-released { background: #5cb85c; }
         .badge-denied { background: #d9534f; }
+        .badge-liquidated { background: #5cb85c; }
 
         .user-details {
             display: none;
@@ -94,6 +95,7 @@
             <li onclick="showTab('users')"><i class="fa-solid fa-users"></i> Users</li>
             <li onclick="showTab('budgets')"><i class="fa-solid fa-wallet"></i> Budget Requests</li>
             <li onclick="showTab('expenses')"><i class="fa-solid fa-money-bill"></i> Expenses</li>
+            <li onclick="showTab('liquidations')"><i class="fa-solid fa-file-invoice-dollar"></i> Liquidations</li>
             <li onclick="showTab('profile')"><i class="fa-solid fa-user"></i> Profile</li>
             <li onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Logout</li>
         </ul>
@@ -229,6 +231,12 @@
                         <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
                             <i class="fas fa-search-minus"></i> Zoom Out
                         </button>
+                        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+                            <i class="fas fa-arrow-right"></i> Next
+                        </button>
                         <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
                             <i class="fas fa-download"></i> Download
                         </button>
@@ -237,6 +245,52 @@
                     <button onclick="closePopup()" style="margin-top: 10px; padding: 5px 15px; border: none; border-radius: 5px; background: linear-gradient(135deg, #ccc, #aaa); color: black; cursor: pointer; z-index: 1003;">
                         Close
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="liquidations" class="tab">
+            <div class="liquidations-tab">
+                <div class="table-header">
+                    <h3>Liquidations</h3>
+                    <div class="table-actions">
+                        <select id="sortLiquidation" onchange="updateLiquidationTable()">
+                            <option value="username">Sort by Username</option>
+                            <option value="date">Sort by Date</option>
+                            <option value="amount">Sort by Amount (High to Low)</option>
+                            <option value="status">Sort by Status</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-container">
+                    <input id="searchLiquidation" type="text" placeholder="Search liquidations..." oninput="filterLiquidations()">
+                </div>
+                <p id="no-liquidations-message" style="display:none; color: red; margin-top: 10px;">No liquidations found.</p>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Date</th>
+                        <th>Request</th>
+                        <th>Amount</th>
+                        <th>Total Spent</th>
+                        <th>Remaining Balance</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+                    <tbody id="liquidation-table"></tbody>
+                </table>
+            </div>
+            <div id="liquidationPopup" class="modal" style="display: none;">
+                <div class="modal-content popup-card" style="width: 400px; text-align: left; max-height: 70vh; overflow-y: auto;">
+                    <span class="close-btn" onclick="closeLiquidationPopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
+                    <h3>Liquidation Details</h3>
+                    <div id="liquidationDetails"></div>
+                    <div class="popup-actions" id="liquidationActions" style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem;">
+                        <!-- Buttons will be dynamically inserted -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -250,7 +304,7 @@
                     <h3 id="admin-info-title">Admin Information</h3>
                     <div class="info-row">
                         <div class="profile-picture-container">
-                            <img id="admin-profile-picture" src="Uploads/public/images/default-profile.png" alt="Admin Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid #f46354;">
+                            <img id="admin-profile-picture" src="Uploads/public/default-profile.jpg" alt="Admin Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid #f46354;">
                             <div class="profile-picture-upload">
                                 <input type="file" id="profile-picture-input" accept="image/*" style="display: none;">
                                 <button class="profile-button" onclick="document.getElementById('profile-picture-input').click()">Change Picture</button>

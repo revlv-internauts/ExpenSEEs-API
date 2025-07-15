@@ -27,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -133,7 +132,7 @@ public class LiquidationReportController {
                 expenses.add(expense);
             }
 
-            // Create liquidation
+            // Create liquidation with budgetId
             Liquidation createdLiquidation = liquidationService.createLiquidation(liquidation, budgetId, expenses);
             return ResponseEntity.ok(createdLiquidation);
         } catch (IllegalArgumentException e) {
@@ -148,6 +147,37 @@ public class LiquidationReportController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<?> getLiquidationReport() {
+        try {
+            List<Liquidation> liquidations = liquidationService.getAllLiquidations();
+            // Map liquidations to include budgetName and amount
+            List<Map<String, Object>> responseList = liquidations.stream().map(liquidation -> {
+                Map<String, Object> liquidationMap = new HashMap<>();
+                SubmittedBudget budget = liquidation.getSubmittedBudget();
+                liquidationMap.put("liquidationId", liquidation.getLiquidationId());
+                liquidationMap.put("budgetName", budget != null ? budget.getName() : "Unknown");
+                liquidationMap.put("amount", budget != null ? budget.getTotal() : 0.0);
+                liquidationMap.put("totalSpent", liquidation.getTotalSpent());
+                liquidationMap.put("remainingBalance", liquidation.getRemainingBalance());
+                liquidationMap.put("status", liquidation.getStatus().toString());
+                liquidationMap.put("remarks", liquidation.getRemarks());
+                liquidationMap.put("dateOfTransaction", liquidation.getDateOfTransaction());
+                liquidationMap.put("createdAt", liquidation.getCreatedAt());
+                liquidationMap.put("expenses", liquidation.getExpenses());
+                liquidationMap.put("username", liquidation.getUsername());
+                return liquidationMap;
+            }).toList();
+            Map<String, Object> report = new HashMap<>();
+            report.put("budgets", responseList);
+            return ResponseEntity.ok(report);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to retrieve liquidations: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/{liquidationId}")
     public ResponseEntity<?> getLiquidationById(@PathVariable Long liquidationId) {
         Map<String, Object> response = new HashMap<>();
@@ -157,10 +187,11 @@ public class LiquidationReportController {
                 response.put("error", "Liquidation not found with ID: " + liquidationId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
-            // Include budget name
+            // Map liquidation to include budgetName and amount
             SubmittedBudget budget = liquidation.getSubmittedBudget();
             response.put("liquidationId", liquidation.getLiquidationId());
             response.put("budgetName", budget != null ? budget.getName() : "Unknown");
+            response.put("amount", budget != null ? budget.getTotal() : 0.0);
             response.put("totalSpent", liquidation.getTotalSpent());
             response.put("remainingBalance", liquidation.getRemainingBalance());
             response.put("status", liquidation.getStatus().toString());
@@ -176,60 +207,33 @@ public class LiquidationReportController {
         }
     }
 
-    @GetMapping
-    public ResponseEntity<?> getLiquidationReport() {
-        try {
-            Map<String, Object> report = new HashMap<>();
-            report.put("budgets", liquidationService.getAllLiquidations());
-            return ResponseEntity.ok(report);
-        } catch (Exception e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Failed to retrieve liquidations: " + e.getMessage());
-            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @PutMapping("/{liquidationId}/status")
-    public ResponseEntity<Map<String, String>> updateLiquidationStatus(@PathVariable Long liquidationId, @RequestBody Map<String, String> request) {
-        Map<String, String> response = new HashMap<>();
-        try {
-            String status = request.get("status");
-            String remarks = request.get("remarks"); // Optional remarks
-            if (status == null || status.trim().isEmpty()) {
-                response.put("error", "Status is required");
-                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-            }
-            Liquidation.Status enumStatus = Liquidation.Status.valueOf(status.toUpperCase());
-            ResponseEntity<String> result = liquidationService.updateLiquidationStatus(liquidationId, enumStatus, remarks);
-            response.put("message", result.getBody());
-            return new ResponseEntity<>(response, result.getStatusCode());
-        } catch (IllegalArgumentException e) {
-            response.put("error", "Invalid status: " + request.get("status"));
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            response.put("error", "Failed to update liquidation status: " + e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/{liquidationId}/images")
-    public ResponseEntity<?> getLiquidationImages(@PathVariable Long liquidationId, @RequestParam(value = "index", defaultValue = "0") int index) {
+    @GetMapping("/{liquidationId}/images/{expenseId}/{imageIndex}")
+    public ResponseEntity<?> getLiquidationImage(
+            @PathVariable Long liquidationId,
+            @PathVariable Long expenseId,
+            @PathVariable Integer imageIndex) {
         Map<String, Object> response = new HashMap<>();
         try {
             Liquidation liquidation = liquidationService.getLiquidationById(liquidationId);
-            if (liquidation == null || liquidation.getExpenses().isEmpty()) {
-                response.put("error", "No expenses found for liquidation " + liquidationId);
+            if (liquidation == null) {
+                response.put("error", "Liquidation not found with ID: " + liquidationId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
-            List<LiquidationExpenseItem> expenseItems = liquidation.getExpenses();
-            List<String> imagePaths = expenseItems.get(0).getImagePaths(); // Assume first expense item for simplicity
-
-            if (imagePaths == null || imagePaths.isEmpty() || index < 0 || index >= imagePaths.size()) {
-                response.put("error", "No image found at index " + index + " for liquidation " + liquidationId);
+            LiquidationExpenseItem expense = liquidation.getExpenses().stream()
+                    .filter(e -> e.getExpenseId().equals(expenseId))
+                    .findFirst()
+                    .orElse(null);
+            if (expense == null) {
+                response.put("error", "Expense not found with ID: " + expenseId);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+            List<String> imagePaths = expense.getImagePaths();
+            if (imagePaths == null || imageIndex < 0 || imageIndex >= imagePaths.size()) {
+                response.put("error", "No image found at index " + imageIndex + " for expense " + expenseId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
 
-            String imagePath = imagePaths.get(index);
+            String imagePath = imagePaths.get(imageIndex);
             File file = new File(imagePath);
             if (!file.exists() || !file.isFile()) {
                 response.put("error", "Image file not found: " + imagePath);
@@ -248,6 +252,31 @@ public class LiquidationReportController {
                     .body(resource);
         } catch (IOException e) {
             response.put("error", "Failed to retrieve image: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("/{liquidationId}/status")
+    public ResponseEntity<Map<String, String>> updateLiquidationStatus(
+            @PathVariable Long liquidationId,
+            @RequestBody Map<String, String> request) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            String status = request.get("status");
+            String remarks = request.get("remarks"); // Optional remarks
+            if (status == null || status.trim().isEmpty()) {
+                response.put("error", "Status is required");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+            Liquidation.Status enumStatus = Liquidation.Status.valueOf(status.toUpperCase());
+            ResponseEntity<String> result = liquidationService.updateLiquidationStatus(liquidationId, enumStatus, remarks);
+            response.put("message", result.getBody());
+            return new ResponseEntity<>(response, result.getStatusCode());
+        } catch (IllegalArgumentException e) {
+            response.put("error", "Invalid status: " + request.get("status"));
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            response.put("error", "Failed to update liquidation status: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

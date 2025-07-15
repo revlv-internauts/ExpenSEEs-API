@@ -1,20 +1,23 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
-                                            // Change to "http://localhost:8080" for local testing
+const SERVER_URL = "http://localhost:8080";
 let users = [];
 let expenses = [];
 let budgetRequests = [];
+let liquidations = [];
 let notifications = [];
 let token = null;
 let selectedUserIndex = null;
 let userDetailsPopup = null;
 let selectedBudgetIndex = null;
+let selectedLiquidationIndex = null;
+let currentExpenseImages = [];
+let currentImageIndex = 0;
 let zoomLevel = 1;
 let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
 let categoryChart, userChart;
 let currentUser = null;
-let currentUserId = null; // To store the current user's ID
+let currentUserId = null;
 
 // =================== AUTH ===================
 async function login() {
@@ -38,13 +41,13 @@ async function login() {
                 currentUser = {
                     username,
                     email: data.email || "admin@gmail.com",
-                    userId: data.user_id // Use user_id (snake_case) to match backend response
+                    userId: data.user_id
                 };
-                currentUserId = data.user_id; // Store user_id
+                currentUserId = data.user_id;
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("dashboard").style.display = "flex";
                 updateDashboard();
-                loadProfilePicture(); // Load profile picture on login
+                loadProfilePicture();
             } else {
                 errorElement.textContent = "Access denied. Only the admin can log in.";
                 errorElement.style.display = "block";
@@ -67,7 +70,7 @@ function logout() {
     document.getElementById("login-screen").style.display = "flex";
     if (categoryChart) categoryChart.destroy();
     if (userChart) userChart.destroy();
-    document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
+    document.getElementById("admin-profile-picture").src = "Uploads/public/default-profile.jpg";
 }
 
 // =================== UI CONTROL ===================
@@ -96,7 +99,7 @@ function showProfile() {
     if (document.getElementById('profile').classList.contains('active') && currentUser) {
         document.getElementById('admin-username').textContent = currentUser.username || 'N/A';
         document.getElementById('admin-email').textContent = currentUser.email || 'N/A';
-        loadProfilePicture(); // Load profile picture when showing profile tab
+        loadProfilePicture();
     }
 }
 
@@ -113,12 +116,11 @@ async function loadProfilePicture() {
             const img = document.getElementById("admin-profile-picture");
             img.src = URL.createObjectURL(blob);
         } else {
-            // Fallback to default image if request fails
-            document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
+            document.getElementById("admin-profile-picture").src = "Uploads/public/default-profile.jpg";
         }
     } catch (error) {
         console.error("Error loading profile picture:", error);
-        document.getElementById("admin-profile-picture").src = "Uploads/profile-pictures/default-profile.jpg";
+        document.getElementById("admin-profile-picture").src = "Uploads/public/default-profile.jpg";
     }
 }
 
@@ -147,8 +149,8 @@ async function uploadProfilePicture() {
         const data = await response.json();
         if (response.ok) {
             showToast(data.message || "Profile picture uploaded successfully");
-            await loadProfilePicture(); // Refresh the picture
-            fileInput.value = ""; // Clear the input
+            await loadProfilePicture();
+            fileInput.value = "";
         } else {
             errorElement.textContent = data.error || "Failed to upload profile picture";
             errorElement.style.display = "block";
@@ -269,7 +271,6 @@ document.getElementById("user-reset-password-form").addEventListener('submit', a
     }
 });
 
-// Add event listener for profile picture upload
 document.getElementById("profile-picture-input").addEventListener("change", uploadProfilePicture);
 
 // =================== USER MODAL ===================
@@ -322,6 +323,26 @@ async function updateDashboard() {
             }));
         }
 
+        // LIQUIDATIONS
+        const liquidationsRes = await fetch(`${SERVER_URL}/api/liquidation`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const liquidationsData = await liquidationsRes.json();
+        if (liquidationsRes.ok) {
+            liquidations = (liquidationsData.budgets || []).map(l => ({
+                liquidationId: l.liquidationId,
+                username: l.username || "Unknown",
+                dateOfTransaction: l.dateOfTransaction || new Date().toISOString(),
+                budgetName: l.budgetName || "No Name",
+                amount: l.amount || 0,
+                totalSpent: l.totalSpent || 0,
+                remainingBalance: l.remainingBalance || 0,
+                status: l.status || "PENDING",
+                remarks: l.remarks || "",
+                expenses: l.expenses || []
+            }));
+        }
+
         // NOTIFICATIONS
         const notificationsRes = await fetch(`${SERVER_URL}/api/admin/notifications`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -345,6 +366,7 @@ async function updateDashboard() {
         updateUserTable();
         updateBudgetTable();
         updateExpenseTable();
+        updateLiquidationTable();
         showProfile();
     } catch (error) {
         showToast("Dashboard error: " + error.message);
@@ -379,7 +401,6 @@ function updateNotifications() {
 
 // =================== CHARTS ===================
 function updateCharts() {
-    // Top Categories
     const categoryTotals = expenses.reduce((acc, exp) => {
         const cat = exp.category || "Uncategorized";
         acc[cat] = (acc[cat] || 0) + (exp.amount || 0);
@@ -414,7 +435,6 @@ function updateCharts() {
         }
     });
 
-    // Top Users
     const userTotals = expenses.reduce((acc, exp) => {
         const user = exp.username || "Unknown";
         acc[user] = (acc[user] || 0) + (exp.amount || 0);
@@ -589,6 +609,8 @@ function closePopup(popupElement = null) {
         img.removeEventListener('mousemove', drag);
         img.removeEventListener('mouseup', stopDragging);
         img.removeEventListener('mouseleave', stopDragging);
+        currentExpenseImages = [];
+        currentImageIndex = 0;
     }
     userDetailsPopup = null;
     selectedUserIndex = null;
@@ -784,7 +806,7 @@ async function updateBudgetStatus(status) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ status }) // Send as { "status": "RELEASED" }
+            body: JSON.stringify({ status })
         });
         const data = await response.json();
         if (response.ok) {
@@ -829,7 +851,7 @@ function updateExpenseTable() {
                 <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>${exp.dateOfTransaction || ''}</td>
                 <td>${exp.remarks || ''}</td>
-                <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
+                <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
             `;
             tbody.appendChild(row);
         });
@@ -870,7 +892,7 @@ function updateExpenseTable() {
                     <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>${exp.dateOfTransaction || ''}</td>
                     <td>${exp.remarks || ''}</td>
-                    <td><button onclick="showExpenseImage(${exp.expenseId})">View</button></td>
+                    <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -906,15 +928,68 @@ function getSortedExpenses() {
     });
 }
 
-function showExpenseImage(expenseId) {
+function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
     zoomLevel = 1;
-    panX = 0; panY = 0;
+    panX = 0;
+    panY = 0;
     img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
     img.style.width = 'auto';
     img.style.height = 'auto';
-    if (expenseId) {
+
+    // Update popup to include navigation buttons
+    const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
+    imageControls.innerHTML = `
+        <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
+            <i class="fas fa-search-plus"></i> Zoom In
+        </button>
+        <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
+            <i class="fas fa-search-minus"></i> Zoom Out
+        </button>
+        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
+            <i class="fas fa-arrow-left"></i> Previous
+        </button>
+        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
+            <i class="fas fa-arrow-right"></i> Next
+        </button>
+        <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+            <i class="fas fa-download"></i> Download
+        </button>
+    `;
+
+    if (liquidationId) {
+        const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
+        const expense = liquidation?.expenses.find(e => e.expenseId === expenseId);
+        currentExpenseImages = expense?.imagePaths || [];
+        currentImageIndex = imageIndex;
+
+        if (currentExpenseImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < currentExpenseImages.length) {
+            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images?index=${currentImageIndex}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
+                return response.blob();
+            })
+            .then(blob => {
+                img.src = URL.createObjectURL(blob);
+                popup.style.display = "flex";
+                document.addEventListener('keydown', handleKeyZoom);
+            })
+            .catch(error => {
+                showToast("Failed to load image: " + error.message);
+                img.src = '';
+                popup.style.display = "flex";
+            });
+        } else {
+            img.src = '';
+            popup.style.display = "flex";
+            showToast("No images available for this expense");
+        }
+    } else {
+        currentExpenseImages = [];
+        currentImageIndex = 0;
         fetch(`${SERVER_URL}/api/expenses/${expenseId}/images?index=0`, {
             headers: { "Authorization": `Bearer ${token}` }
         })
@@ -929,15 +1004,33 @@ function showExpenseImage(expenseId) {
         })
         .catch(error => {
             showToast("Failed to load image: " + error.message);
+            img.src = '';
+            popup.style.display = "flex";
         });
-    } else {
-        img.src = '';
-        popup.style.display = "flex";
     }
+
     img.addEventListener('mousedown', startDragging);
     img.addEventListener('mousemove', drag);
     img.addEventListener('mouseup', stopDragging);
     img.addEventListener('mouseleave', stopDragging);
+}
+
+function showPreviousImage() {
+    if (currentImageIndex > 0) {
+        currentImageIndex--;
+        const liquidation = liquidations[selectedLiquidationIndex];
+        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
+        showExpenseImage(expense.expenseId, liquidation.liquidationId, currentImageIndex);
+    }
+}
+
+function showNextImage() {
+    if (currentImageIndex < currentExpenseImages.length - 1) {
+        currentImageIndex++;
+        const liquidation = liquidations[selectedLiquidationIndex];
+        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
+        showExpenseImage(expense.expenseId, liquidation.liquidationId, currentImageIndex);
+    }
 }
 
 function zoomImage(direction) {
@@ -992,11 +1085,9 @@ function drag(event) {
 }
 
 function stopDragging() {
-    if (isDragging) {
-        isDragging = false;
-        const img = document.getElementById("popup-expense-img");
-        img.style.cursor = 'grab';
-    }
+    isDragging = false;
+    const img = document.getElementById("popup-expense-img");
+    img.style.cursor = zoomLevel > 1 ? 'grab' : 'auto';
 }
 
 function downloadImage() {
@@ -1004,11 +1095,215 @@ function downloadImage() {
     if (img.src) {
         const link = document.createElement('a');
         link.href = img.src;
-        link.download = `expense_receipt_${new Date().toISOString().slice(0, 10)}.png`;
-        document.body.appendChild(link);
+        link.download = `expense-image-${Date.now()}.jpg`;
         link.click();
-        document.body.removeChild(link);
+    }
+}
+
+// =================== LIQUIDATION FUNCTIONS ===================
+function updateLiquidationTable() {
+    const tbody = document.getElementById("liquidation-table");
+    tbody.innerHTML = "";
+
+    const sortValue = document.getElementById("sortLiquidation")?.value || "username";
+    const searchValue = document.getElementById("searchLiquidation")?.value.toLowerCase() || "";
+
+    let filteredLiquidations = liquidations;
+    if (searchValue) {
+        filteredLiquidations = liquidations.filter(liq =>
+            (liq.username?.toLowerCase().includes(searchValue) || '') ||
+            (liq.budgetName?.toLowerCase().includes(searchValue) || '') ||
+            (liq.amount?.toString().includes(searchValue) || '') ||
+            (liq.totalSpent?.toString().includes(searchValue) || '') ||
+            (liq.remainingBalance?.toString().includes(searchValue) || '') ||
+            (liq.status?.toLowerCase().includes(searchValue) || '') ||
+            (liq.remarks?.toLowerCase().includes(searchValue) || '')
+        );
+    }
+
+    if (sortValue === "amount") {
+        const sortedLiquidations = [...filteredLiquidations].sort((a, b) => (b.amount || 0) - (a.amount || 0));
+        sortedLiquidations.forEach((liq, index) => {
+            const row = document.createElement("tr");
+            const statusClass = liq.status === "PENDING" ? "badge-pending" :
+                              liq.status === "LIQUIDATED" ? "badge-liquidated" :
+                              "badge-denied";
+            const originalIndex = liquidations.findIndex(l => l.liquidationId === liq.liquidationId);
+            row.innerHTML = `
+                <td>${liq.username || 'Unknown'}</td>
+                <td>${liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString() : 'N/A'}</td>
+                <td>${liq.budgetName || 'No Name'}</td>
+                <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td><span class="status-badge ${statusClass}">${liq.status || 'PENDING'}</span></td>
+                <td>${liq.remarks || ''}</td>
+                <td><button onclick="showLiquidationDetails(${originalIndex})">View</button></td>
+            `;
+            tbody.appendChild(row);
+        });
     } else {
-        showToast("No image available to download.");
+        const groupLiquidations = (liquidations, key) => {
+            const groups = {};
+            liquidations.forEach(liq => {
+                let groupKey;
+                switch (key) {
+                    case "username": groupKey = liq.username || 'Unknown'; break;
+                    case "date": groupKey = liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date'; break;
+                    case "status": groupKey = liq.status || 'PENDING'; break;
+                }
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(liq);
+            });
+            return groups;
+        };
+
+        const groupedLiquidations = groupLiquidations(filteredLiquidations, sortValue);
+
+        Object.keys(groupedLiquidations).sort().forEach((groupKey, index) => {
+            const headerRow = document.createElement("tr");
+            headerRow.innerHTML = `<td colspan="9" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
+            tbody.appendChild(headerRow);
+
+            groupedLiquidations[groupKey].forEach(liq => {
+                const row = document.createElement("tr");
+                const statusClass = liq.status === "PENDING" ? "badge-pending" :
+                                  liq.status === "LIQUIDATED" ? "badge-liquidated" :
+                                  "badge-denied";
+                const originalIndex = liquidations.findIndex(l => l.liquidationId === liq.liquidationId);
+                row.innerHTML = `
+                    <td>${liq.username || 'Unknown'}</td>
+                    <td>${liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString() : 'N/A'}</td>
+                    <td>${liq.budgetName || 'No Name'}</td>
+                    <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td><span class="status-badge ${statusClass}">${liq.status || 'PENDING'}</span></td>
+                    <td>${liq.remarks || ''}</td>
+                    <td><button onclick="showLiquidationDetails(${originalIndex})">View</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (index < Object.keys(groupedLiquidations).length - 1) {
+                const separatorRow = document.createElement("tr");
+                separatorRow.innerHTML = `<td colspan="9" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
+                tbody.appendChild(separatorRow);
+            }
+        });
+    }
+
+    document.getElementById("no-liquidations-message").style.display = filteredLiquidations.length === 0 ? "block" : "none";
+}
+
+function filterLiquidations() {
+    updateLiquidationTable();
+}
+
+function showLiquidationDetails(index) {
+    if (index === null || index < 0 || index >= liquidations.length) return;
+    selectedLiquidationIndex = index;
+    const liquidation = liquidations[index];
+    const detailsDiv = document.getElementById("liquidationDetails");
+    const actionsDiv = document.getElementById("liquidationActions");
+    const isPending = liquidation.status === "PENDING";
+
+    detailsDiv.innerHTML = `
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${liquidation.dateOfTransaction ? new Date(liquidation.dateOfTransaction).toLocaleDateString() : 'N/A'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Spent:</span> <span style="word-break: break-word;">₱${(liquidation.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remaining Balance:</span> <span style="word-break: break-word;">₱${(liquidation.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${liquidation.status === "PENDING" ? "badge-pending" : liquidation.status === "LIQUIDATED" ? "badge-liquidated" : "badge-denied"}" style="word-break: break-word;">${liquidation.status || 'PENDING'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${liquidation.remarks || 'None'}</span>
+        </div>
+        <h4 style="margin: 1rem 0;">Associated Expenses:</h4>
+        ${liquidation.expenses && liquidation.expenses.length > 0 ? `
+            <ul style="padding-left: 20px; margin: 0;">
+                ${liquidation.expenses.map(exp => `
+                    <li style="margin-bottom: 1rem;">
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${exp.category || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span>
+                            <button onclick="showExpenseImage(${exp.expenseId}, ${liquidation.liquidationId}, 0)">View</button>
+                        </div>
+                    </li>
+                `).join('')}
+            </ul>
+        ` : '<p style="margin: 1rem 0;">No expenses associated with this liquidation.</p>'}
+    `;
+
+    actionsDiv.innerHTML = isPending ? `
+        <button onclick="liquidateLiquidation()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Liquidate</button>
+        <button onclick="denyLiquidation()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
+    ` : ``;
+
+    document.getElementById("liquidationPopup").style.display = "flex";
+}
+
+function closeLiquidationPopup() {
+    document.getElementById("liquidationPopup").style.display = "none";
+    selectedLiquidationIndex = null;
+}
+
+async function liquidateLiquidation() {
+    if (selectedLiquidationIndex === null) return;
+    await updateLiquidationStatus("LIQUIDATED");
+}
+
+async function denyLiquidation() {
+    if (selectedLiquidationIndex === null) return;
+    await updateLiquidationStatus("DENIED");
+}
+
+async function updateLiquidationStatus(status) {
+    try {
+        const liquidation = liquidations[selectedLiquidationIndex];
+        const response = await fetch(`${SERVER_URL}/api/liquidation/${liquidation.liquidationId}/status`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ status })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            liquidations[selectedLiquidationIndex].status = status;
+            updateLiquidationTable();
+            closeLiquidationPopup();
+            showToast(`Liquidation ${status.toLowerCase()} successfully`);
+        } else {
+            showToast(data.error || "Status update failed");
+        }
+    } catch (error) {
+        showToast("Status update error: " + error.message);
     }
 }

@@ -5,16 +5,19 @@ body, html {
     font-family: 'Segoe UI', sans-serif;
     height: 100%;
     overflow: hidden;
+    background-color: #e5ddda;
 }
 
 #home header h2 {
     margin-left: 40px;
     margin-top: 2px;
+    color: #b52025;
 }
 
 .table-header h3 {
     margin-left: 40px;
     margin-top: 2px;
+    color: #b52025;
 }
 
 /* === Login Page === */
@@ -30,7 +33,7 @@ body, html {
 }
 
 .login-container {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: linear-gradient(135deg, #5e374a, #8a5a6e);
     padding: 3rem 2.5rem;
     border-radius: 25px;
     text-align: center;
@@ -53,16 +56,18 @@ body, html {
     width: 77%;
     padding: 1rem;
     margin-bottom: 1.2rem;
-    border: 2px solid #f46354;
+    border: 2px solid #5e374a;
     border-radius: 10px;
     font-size: 1rem;
     outline: none;
+    background-color: rgba(248, 230, 230, 0.9);
+    color: #5e374a;
 }
 
 .login-container button {
     width: 86%;
     padding: 1rem;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
+    background: linear-gradient(135deg, #5e374a, #8a5a6e);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -75,6 +80,15 @@ body, html {
     opacity: 0.9;
 }
 
+.login-container a {
+    color: #8a5a6e;
+    text-decoration: none;
+}
+
+.login-container a:hover {
+    text-decoration: underline;
+}
+
 /* === Sidebar === */
 .sidebar {
     position: fixed;
@@ -82,8 +96,8 @@ body, html {
     left: -240px;
     width: 220px;
     height: 100%;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -110,7 +124,7 @@ body, html {
 
 .sidebar ul li {
     padding: 1rem;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
+    border-bottom: 1px solid rgba(248, 230, 230, 0.2);
     cursor: pointer;
     text-align: left;
     transition: background 0.3s;
@@ -118,7 +132,7 @@ body, html {
 }
 
 .sidebar ul li:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(248, 230, 230, 0.1);
 }
 
 /* === Toggle Button === */
@@ -128,8 +142,8 @@ body, html {
     left: 20px;
     font-size: 1.5rem;
     cursor: pointer;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: #fff;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
     z-index: 1100;
@@ -149,7 +163,7 @@ body, html {
     transition: margin-left 0.3s ease;
     overflow-y: auto;
     width: 100%;
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
 }
 
 .sidebar.active ~ .content {
@@ -167,7 +181,7 @@ body, html {
 
 header h2 {
     font-size: 1.5rem;
-    color: #111;
+    color: #b52025;
     margin-bottom: 1.5rem;
 }
 
@@ -180,8 +194,8 @@ header h2 {
 }
 
 .balance-card {
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     padding: 1.5rem;
     border-radius: 15px;
     width: 280px;
@@ -189,7 +203,7 @@ header h2 {
 }
 
 .chart-card, .notifications-card {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     padding: 1.5rem;
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
@@ -199,12 +213,12 @@ header h2 {
 
 .chart-card h4, .notifications-card h4 {
     margin: 0 0 1rem;
-    color: #f46354;
+    color: #b52025;
 }
 
 .notification-item {
     padding: 0.75rem 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #d5bfc6;
 }
 
 .notification-item:last-child {
@@ -214,6 +228,7 @@ header h2 {
 .notification-item p {
     margin: 0.25rem 0;
     font-size: 0.95rem;
+    color: #b52025;
 }
 
 .table-header {
@@ -226,34 +241,35 @@ header h2 {
 .table-actions select {
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid #f46354;
+    border: 1px solid #b52025;
     font-size: 0.9rem;
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
+    color: #b52025;
 }
 
 /* === Table === */
 table {
     width: 100%;
     border-collapse: collapse;
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 thead {
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
 }
 
 td, th {
     padding: 0.8rem;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #d5bfc6;
 }
 
 tbody tr:hover {
-    background: rgba(255, 243, 240, 0.5);
+    background: rgba(181, 32, 37, 0.1);
 }
 
 /* === Modal === */
@@ -271,7 +287,7 @@ tbody tr:hover {
 }
 
 .modal-content {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     padding: 2rem;
     border-radius: 15px;
     box-shadow: 0 0 10px rgba(0,0,0,0.25);
@@ -283,8 +299,10 @@ tbody tr:hover {
     width: 90%;
     padding: 0.75rem;
     margin-bottom: 1rem;
-    border: 1px solid #f46354;
+    border: 1px solid #b52025;
     border-radius: 8px;
+    background-color: #fff;
+    color: #b52025;
 }
 
 .modal-content button {
@@ -294,8 +312,8 @@ tbody tr:hover {
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
 }
 
 .modal-content button:last-child {
@@ -313,17 +331,17 @@ tbody tr:hover {
     top: 13px;
     cursor: pointer;
     font-size: 1rem;
-    color: #f46354;
+    color: #b52025;
 }
 
 .toggle-password:hover {
-    color: #d84e44;
+    color: #d47278;
 }
 
 /* === Profile Tab === */
 #profile header h2 {
     font-size: 1.5rem;
-    color: #111;
+    color: #b52025;
     margin-left: 40px;
     margin-top: 2px;
     margin-bottom: 1.5rem;
@@ -339,7 +357,7 @@ tbody tr:hover {
 }
 
 .profile-card {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     padding: 1.5rem;
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
@@ -347,14 +365,14 @@ tbody tr:hover {
 
 .profile-card h3 {
     margin: 0 0 1rem;
-    color: #f46354;
+    color: #b52025;
     font-size: 1.2rem;
 }
 
 .profile-card .info-row p {
     margin: 0.5rem 0;
     font-size: 1rem;
-    color: #333;
+    color: #b52025;
 }
 
 .profile-form {
@@ -371,18 +389,19 @@ tbody tr:hover {
 
 .profile-form label {
     font-size: 0.9rem;
-    color: #333;
+    color: #b52025;
     font-weight: 500;
 }
 
 .profile-form input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #f46354;
+    border: 1px solid #b52025;
     border-radius: 8px;
     font-size: 1rem;
     background: #fff;
     box-sizing: border-box;
+    color: #b52025;
 }
 
 .profile-form .password-wrapper .toggle-password {
@@ -393,8 +412,8 @@ tbody tr:hover {
 
 .profile-button {
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -428,7 +447,7 @@ tbody tr:hover {
 }
 
 .popup-card {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     padding: 2rem;
     border-radius: 15px;
     width: 350px;
@@ -438,12 +457,13 @@ tbody tr:hover {
 
 .popup-card h3 {
     margin-bottom: 1rem;
-    color: #f46354;
+    color: #b52025;
 }
 
 .popup-card p {
     margin: 0.5rem 0;
     font-size: 0.95rem;
+    color: #b52025;
 }
 
 .popup-actions {
@@ -462,8 +482,8 @@ tbody tr:hover {
 }
 
 .popup-actions button:first-child {
-    background: linear-gradient(135deg, #d9534f, #c9302c);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
 }
 
 .popup-actions button:last-child {
@@ -488,9 +508,10 @@ tbody tr:hover {
     width: 100%;
     padding: 10px 40px 10px 12px;
     font-size: 15px;
-    border: 1px solid #f46354;
+    border: 1px solid #b52025;
     border-radius: 6px;
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #fff;
+    color: #b52025;
 }
 
 .users-header {
@@ -504,8 +525,8 @@ tbody tr:hover {
 
 .add-user-btn {
     padding: 10px 16px;
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     font-weight: bold;
     border: none;
     border-radius: 6px;
@@ -518,7 +539,7 @@ tbody tr:hover {
 }
 
 .error-text {
-    color: red;
+    color: #d9534f;
     font-size: 0.9rem;
     margin-bottom: 10px;
     text-align: left;
@@ -533,25 +554,25 @@ tbody tr:hover {
 
 /* === Enhance Expenses Tab Table === */
 #expenses table {
-    background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    background: #f8e6e6;
     border-radius: 12px;
     overflow: hidden;
 }
 
 #expenses thead {
-    background: linear-gradient(135deg, #ff5722, #ff8a50);
-    color: white;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     font-weight: 600;
 }
 
 #expenses tbody tr:hover {
-    background: rgba(255, 243, 240, 0.5);
+    background: rgba(181, 32, 37, 0.1);
 }
 
 /* === Budget Popup === */
 #budgetPopup .modal-content h4 {
     margin: 1rem 0 0.5rem;
-    color: #f46354;
+    color: #b52025;
 }
 
 #budgetPopup .modal-content ul {
@@ -563,13 +584,13 @@ tbody tr:hover {
 #budgetPopup .modal-content li {
     margin-bottom: 0.75rem;
     padding: 0.75rem;
-    background: linear-gradient(135deg, #fff3f0, #ffffff);
+    background: linear-gradient(135deg, #fff5f5, #ffffff);
     border-radius: 5px;
-    border-left: 4px solid #f46354;
+    border-left: 4px solid #b52025;
 }
 
 #budgetPopup .modal-content p strong {
-    color: #555;
+    color: #b52025;
 }
 
 #budgetPopup .modal-content .close-btn {
@@ -577,7 +598,7 @@ tbody tr:hover {
 }
 
 #budgetPopup .modal-content .close-btn:hover {
-    color: #f46354;
+    color: #d47278;
 }
 
 /* === Toast Notification === */
@@ -585,8 +606,8 @@ tbody tr:hover {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: linear-gradient(135deg, #e57373, #ff9999);
-    color: #fff;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
     padding: 1rem 1.5rem;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
@@ -637,8 +658,78 @@ tbody tr:hover {
 .profile-picture-upload button {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
+    background: linear-gradient(135deg, #b52025, #d47278);
+    color: #f8e6e6;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 #profile-picture-error {
     text-align: center;
+    color: #d9534f;
+}
+
+/* === Custom Styles from index.html === */
+.status-badge {
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: white;
+}
+
+.badge-pending { background: #f0ad4e; }
+.badge-released { background: #5cb85c; }
+.badge-denied { background: #d9534f; }
+.badge-liquidated { background: #5cb85c; }
+
+.user-details {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fff5f5;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.modal-confirm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+
+.modal-confirm-content {
+    background: #fff5f5;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0,0,0,0.25);
+}
+
+.modal-confirm-content button {
+    margin: 0 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.confirm-delete { background: #d9534f; color: white; }
+.cancel-delete { background: #ccc; }
+
+.modal-content input {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    border: 1px solid #b52025;
+    border-radius: 5px;
 }
