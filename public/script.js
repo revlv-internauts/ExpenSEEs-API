@@ -18,6 +18,8 @@ let startX = 0, startY = 0;
 let categoryChart, userChart, monthlySpendingChart, budgetStatusChart;
 let currentUser = null;
 let currentUserId = null;
+let pendingBudgetAction = null;
+let pendingLiquidationAction = null;
 
 // =================== AUTH ===================
 async function login() {
@@ -875,29 +877,46 @@ function showBudgetDetails(index) {
     `;
 
     actionsDiv.innerHTML = isPending ? `
-        <button onclick="releaseBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Release</button>
-        <button onclick="denyBudget()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
+        <button onclick="showBudgetActionModal('RELEASED')" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Release</button>
+        <button onclick="showBudgetActionModal('DENIED')" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
     ` : ``;
 
     document.getElementById("budgetPopup").style.display = "flex";
 }
 
-function closeBudgetPopup() {
-    document.getElementById("budgetPopup").style.display = "none";
-    selectedBudgetIndex = null;
-}
-
-async function releaseBudget() {
+function showBudgetActionModal(action) {
     if (selectedBudgetIndex === null) return;
-    await updateBudgetStatus("RELEASED");
+    pendingBudgetAction = action;
+    const modal = document.getElementById("budgetActionModal");
+    const title = document.getElementById("budgetActionTitle");
+    const message = document.getElementById("budgetActionMessage");
+    const confirmButton = document.getElementById("budgetConfirmAction");
+    const errorElement = document.getElementById("budgetActionError");
+
+    title.textContent = `Confirm ${action.charAt(0) + action.slice(1).toLowerCase()} Budget`;
+    message.textContent = `Are you sure you want to ${action.toLowerCase()} this budget request?`;
+    confirmButton.textContent = action.charAt(0) + action.slice(1).toLowerCase();
+    confirmButton.className = `confirm-action ${action === 'DENIED' ? 'deny-action' : ''}`;
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+    document.getElementById("budgetActionRemarks").value = "";
+
+    confirmButton.onclick = () => confirmBudgetAction();
+    modal.style.display = "flex";
 }
 
-async function denyBudget() {
-    if (selectedBudgetIndex === null) return;
-    await updateBudgetStatus("DENIED");
+function closeBudgetActionModal() {
+    document.getElementById("budgetActionModal").style.display = "none";
+    pendingBudgetAction = null;
 }
 
-async function updateBudgetStatus(status) {
+async function confirmBudgetAction() {
+    if (selectedBudgetIndex === null || !pendingBudgetAction) return;
+    const remarks = document.getElementById("budgetActionRemarks").value.trim();
+    const errorElement = document.getElementById("budgetActionError");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
     try {
         const budget = budgetRequests[selectedBudgetIndex];
         const response = await fetch(`${SERVER_URL}/api/budgets/${budget.budgetId}/status`, {
@@ -906,20 +925,29 @@ async function updateBudgetStatus(status) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status: pendingBudgetAction, remarks })
         });
         const data = await response.json();
         if (response.ok) {
-            budgetRequests[selectedBudgetIndex].status = status;
+            budgetRequests[selectedBudgetIndex].status = pendingBudgetAction;
+            budgetRequests[selectedBudgetIndex].remarks = remarks || budgetRequests[selectedBudgetIndex].remarks;
             updateBudgetTable();
             closeBudgetPopup();
-            showToast(`Budget ${status.toLowerCase()} successfully`);
+            closeBudgetActionModal();
+            showToast(`Budget ${pendingBudgetAction.toLowerCase()} successfully`);
         } else {
-            showToast(data.error || "Status update failed");
+            errorElement.textContent = data.error || "Status update failed";
+            errorElement.style.display = "block";
         }
     } catch (error) {
-        showToast("Status update error: " + error.message);
+        errorElement.textContent = "Status update error: " + error.message;
+        errorElement.style.display = "block";
     }
+}
+
+function closeBudgetPopup() {
+    document.getElementById("budgetPopup").style.display = "none";
+    selectedBudgetIndex = null;
 }
 
 // =================== EXPENSE FUNCTIONS ===================
@@ -1028,7 +1056,7 @@ function getSortedExpenses() {
     });
 }
 
-function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
+async function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
     zoomLevel = 1;
@@ -1038,134 +1066,72 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     img.style.width = 'auto';
     img.style.height = 'auto';
 
-    // Update popup to include navigation buttons
-    const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
-    imageControls.innerHTML = `
-        <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
-            <i class="fas fa-search-plus"></i> Zoom In
-        </button>
-        <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
-            <i class="fas fa-search-minus"></i> Zoom Out
-        </button>
-        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
-            <i class="fas fa-arrow-left"></i> Previous
-        </button>
-        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
-            <i class="fas fa-arrow-right"></i> Next
-        </button>
-        <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
-            <i class="fas fa-download"></i> Download
-        </button>
-    `;
+    try {
+        let imageUrls = [];
+        if (liquidationId) {
+            const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
+            if (liquidation && liquidation.expenses) {
+                imageUrls = liquidation.expenses.flatMap(exp => exp.imageUrls || []);
+            }
+        } else {
+            const expense = expenses.find(exp => exp.expenseId === expenseId);
+            if (expense && expense.imageUrls) {
+                imageUrls = expense.imageUrls;
+            }
+        }
 
-    if (liquidationId) {
-        const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
-        const expense = liquidation?.expenses.find(e => e.expenseId === expenseId);
-        currentExpenseImages = expense?.imagePaths || [];
-        currentImageIndex = imageIndex;
+        currentExpenseImages = imageUrls;
+        currentImageIndex = imageIndex >= 0 && imageIndex < imageUrls.length ? imageIndex : 0;
 
-        if (currentExpenseImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < currentExpenseImages.length) {
-            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images?index=${currentImageIndex}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
-                return response.blob();
-            })
-            .then(blob => {
+        if (currentExpenseImages.length > 0) {
+            const response = await fetch(currentExpenseImages[currentImageIndex], {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const blob = await response.blob();
                 img.src = URL.createObjectURL(blob);
                 popup.style.display = "flex";
+
+                img.addEventListener('mousedown', startDragging);
+                img.addEventListener('mousemove', drag);
+                img.addEventListener('mouseup', stopDragging);
+                img.addEventListener('mouseleave', stopDragging);
                 document.addEventListener('keydown', handleKeyZoom);
-            })
-            .catch(error => {
-                showToast("Failed to load image: " + error.message);
-                img.src = '';
+            } else {
+                img.src = "images/no-image.png";
                 popup.style.display = "flex";
-            });
+            }
         } else {
-            img.src = '';
+            img.src = "images/no-image.png";
             popup.style.display = "flex";
-            showToast("No images available for this expense");
         }
-    } else {
-        currentExpenseImages = [];
-        currentImageIndex = 0;
-        fetch(`${SERVER_URL}/api/expenses/${expenseId}/images?index=0`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
-            return response.blob();
-        })
-        .then(blob => {
-            img.src = URL.createObjectURL(blob);
-            popup.style.display = "flex";
-            document.addEventListener('keydown', handleKeyZoom);
-        })
-        .catch(error => {
-            showToast("Failed to load image: " + error.message);
-            img.src = '';
-            popup.style.display = "flex";
-        });
-    }
 
-    img.addEventListener('mousedown', startDragging);
-    img.addEventListener('mousemove', drag);
-    img.addEventListener('mouseup', stopDragging);
-    img.addEventListener('mouseleave', stopDragging);
-}
-
-function showPreviousImage() {
-    if (currentImageIndex > 0) {
-        currentImageIndex--;
-        const liquidation = liquidations[selectedLiquidationIndex];
-        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
+        const prevButton = popup.querySelector('button[onclick="showPreviousImage()"]');
+        const nextButton = popup.querySelector('button[onclick="showNextImage()"]');
+        if (prevButton && nextButton) {
+            prevButton.style.display = currentExpenseImages.length > 1 ? 'inline-block' : 'none';
+            nextButton.style.display = currentExpenseImages.length > 1 ? 'inline-block' : 'none';
+        }
+    } catch (error) {
+        console.error("Error loading expense image:", error);
+        img.src = "images/no-image.png";
+        popup.style.display = "flex";
     }
 }
 
-function showNextImage() {
-    if (currentImageIndex < currentExpenseImages.length - 1) {
-        currentImageIndex++;
-        const liquidation = liquidations[selectedLiquidationIndex];
-        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
-    }
-}
-
-function zoomImage(direction) {
-    const img = document.getElementById("popup-expense-img");
-    if (direction === 'in' && zoomLevel < 3) {
-        zoomLevel += 0.2;
-    } else if (direction === 'out' && zoomLevel > 0.5) {
-        zoomLevel -= 0.2;
-    }
-    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-}
-
-function handleKeyZoom(event) {
-    if (event.key === '+' || event.key === '=') {
-        zoomImage('in');
-    } else if (event.key === '-' || event.key === '_') {
-        zoomImage('out');
-    }
-}
-
-function startDragging(event) {
-    if (zoomLevel <= 1) return;
+function startDragging(e) {
     isDragging = true;
-    startX = event.clientX - panX;
-    startY = event.clientY - panY;
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
     document.getElementById("popup-expense-img").style.cursor = 'grabbing';
 }
 
-function drag(event) {
+function drag(e) {
     if (!isDragging) return;
-    event.preventDefault();
-    panX = event.clientX - startX;
-    panY = event.clientY - startY;
-    const img = document.getElementById("popup-expense-img");
-    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+    e.preventDefault();
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    document.getElementById("popup-expense-img").style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
 function stopDragging() {
@@ -1173,23 +1139,59 @@ function stopDragging() {
     document.getElementById("popup-expense-img").style.cursor = 'grab';
 }
 
-async function downloadImage() {
+function zoomImage(direction) {
     const img = document.getElementById("popup-expense-img");
-    if (!img.src) return;
+    if (direction === 'in' && zoomLevel < 3) {
+        zoomLevel += 0.1;
+    } else if (direction === 'out' && zoomLevel > 0.5) {
+        zoomLevel -= 0.1;
+    }
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+}
 
+function handleKeyZoom(e) {
+    if (e.key === '+' || e.key === '=') {
+        zoomImage('in');
+    } else if (e.key === '-') {
+        zoomImage('out');
+    }
+}
+
+function showPreviousImage() {
+    if (currentExpenseImages.length > 1) {
+        currentImageIndex = (currentImageIndex - 1 + currentExpenseImages.length) % currentExpenseImages.length;
+        showExpenseImage(null, liquidations.find(l => l.expenses.some(exp => exp.imageUrls.includes(currentExpenseImages[currentImageIndex]))).liquidationId, currentImageIndex);
+    }
+}
+
+function showNextImage() {
+    if (currentExpenseImages.length > 1) {
+        currentImageIndex = (currentImageIndex + 1) % currentExpenseImages.length;
+        showExpenseImage(null, liquidations.find(l => l.expenses.some(exp => exp.imageUrls.includes(currentExpenseImages[currentImageIndex]))).liquidationId, currentImageIndex);
+    }
+}
+
+async function downloadImage() {
+    if (currentExpenseImages.length === 0) return;
     try {
-        const response = await fetch(img.src);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `expense-image-${currentImageIndex + 1}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        const response = await fetch(currentExpenseImages[currentImageIndex], {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expense_image_${currentImageIndex + 1}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            showToast("Failed to download image");
+        }
     } catch (error) {
-        showToast("Failed to download image: " + error.message);
+        showToast("Download error: " + error.message);
     }
 }
 
@@ -1203,13 +1205,13 @@ function updateLiquidationTable() {
 
     let filteredLiquidations = liquidations;
     if (searchValue) {
-        filteredLiquidations = liquidations.filter(liq =>
-            (liq.username?.toLowerCase().includes(searchValue) || '') ||
-            (liq.budgetName?.toLowerCase().includes(searchValue) || '') ||
-            (liq.amount?.toString().includes(searchValue) || '') ||
-            (formatDate(liq.dateOfTransaction).toLowerCase().includes(searchValue) || '') ||
-            (liq.status?.toLowerCase().includes(searchValue) || '') ||
-            (liq.remarks?.toLowerCase().includes(searchValue) || '')
+        filteredLiquidations = liquidations.filter(l =>
+            (l.username?.toLowerCase().includes(searchValue) || '') ||
+            (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
+            (l.amount?.toString().includes(searchValue) || '') ||
+            (l.dateOfTransaction ? formatDate(l.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
+            (l.status?.toLowerCase().includes(searchValue) || '') ||
+            (l.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
 
@@ -1221,7 +1223,7 @@ function updateLiquidationTable() {
                               liq.status === "LIQUIDATED" ? "badge-liquidated" :
                               "badge-denied";
             row.innerHTML = `
-                <td>${formatDate(liq.dateOfTransaction)}</td>
+                <td>${liq.dateOfTransaction ? formatDate(liq.dateOfTransaction) : ''}</td>
                 <td>${liq.username || 'Unknown'}</td>
                 <td>${liq.budgetName || 'No Name'}</td>
                 <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -1239,9 +1241,15 @@ function updateLiquidationTable() {
             liquidations.forEach(liq => {
                 let groupKey;
                 switch (key) {
-                    case "date": groupKey = liq.dateOfTransaction ? formatDate(liq.dateOfTransaction).slice(0, 7) : 'No Date'; break;
-                    case "username": groupKey = liq.username || 'Unknown'; break;
-                    case "status": groupKey = liq.status || 'PENDING'; break;
+                    case "date":
+                        groupKey = liq.dateOfTransaction ? formatDate(liq.dateOfTransaction).slice(0, 7) : 'No Date';
+                        break;
+                    case "username":
+                        groupKey = liq.username || 'Unknown';
+                        break;
+                    case "status":
+                        groupKey = liq.status || 'PENDING';
+                        break;
                 }
                 if (!groups[groupKey]) groups[groupKey] = [];
                 groups[groupKey].push(liq);
@@ -1251,12 +1259,7 @@ function updateLiquidationTable() {
 
         const groupedLiquidations = groupLiquidations(filteredLiquidations, sortValue);
 
-        Object.keys(groupedLiquidations).sort((a, b) => {
-            if (sortValue === "date") {
-                return a.localeCompare(b); // Sort by YYYY-MM
-            }
-            return a.localeCompare(b);
-        }).forEach((groupKey, index) => {
+        Object.keys(groupedLiquidations).sort().forEach((groupKey, index) => {
             const headerRow = document.createElement("tr");
             headerRow.innerHTML = `<td colspan="9" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
@@ -1267,7 +1270,7 @@ function updateLiquidationTable() {
                                   liq.status === "LIQUIDATED" ? "badge-liquidated" :
                                   "badge-denied";
                 row.innerHTML = `
-                    <td>${formatDate(liq.dateOfTransaction)}</td>
+                    <td>${liq.dateOfTransaction ? formatDate(liq.dateOfTransaction) : ''}</td>
                     <td>${liq.username || 'Unknown'}</td>
                     <td>${liq.budgetName || 'No Name'}</td>
                     <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -1305,16 +1308,16 @@ function showLiquidationDetails(index) {
 
     detailsDiv.innerHTML = `
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
-        </div>
-        <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${formatDate(liquidation.dateOfTransaction)}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Spent:</span> <span style="word-break: break-word;">₱${(liquidation.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1340,9 +1343,6 @@ function showLiquidationDetails(index) {
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : 'N/A'}</span>
-                        </div>
-                        <div>
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
                         </div>
                         <div>
@@ -1355,29 +1355,46 @@ function showLiquidationDetails(index) {
     `;
 
     actionsDiv.innerHTML = isPending ? `
-        <button onclick="liquidateBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Liquidate</button>
-        <button onclick="denyLiquidation()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
+        <button onclick="showLiquidationActionModal('LIQUIDATED')" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Liquidate</button>
+        <button onclick="showLiquidationActionModal('DENIED')" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
     ` : ``;
 
     document.getElementById("liquidationPopup").style.display = "flex";
 }
 
-function closeLiquidationPopup() {
-    document.getElementById("liquidationPopup").style.display = "none";
-    selectedLiquidationIndex = null;
-}
-
-async function liquidateBudget() {
+function showLiquidationActionModal(action) {
     if (selectedLiquidationIndex === null) return;
-    await updateLiquidationStatus("LIQUIDATED");
+    pendingLiquidationAction = action;
+    const modal = document.getElementById("liquidationActionModal");
+    const title = document.getElementById("liquidationActionTitle");
+    const message = document.getElementById("liquidationActionMessage");
+    const confirmButton = document.getElementById("liquidationConfirmAction");
+    const errorElement = document.getElementById("liquidationActionError");
+
+    title.textContent = `Confirm ${action.charAt(0) + action.slice(1).toLowerCase()} Liquidation`;
+    message.textContent = `Are you sure you want to ${action.toLowerCase()} this liquidation request?`;
+    confirmButton.textContent = action.charAt(0) + action.slice(1).toLowerCase();
+    confirmButton.className = `confirm-action ${action === 'DENIED' ? 'deny-action' : ''}`;
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+    document.getElementById("liquidationActionRemarks").value = "";
+
+    confirmButton.onclick = () => confirmLiquidationAction();
+    modal.style.display = "flex";
 }
 
-async function denyLiquidation() {
-    if (selectedLiquidationIndex === null) return;
-    await updateLiquidationStatus("DENIED");
+function closeLiquidationActionModal() {
+    document.getElementById("liquidationActionModal").style.display = "none";
+    pendingLiquidationAction = null;
 }
 
-async function updateLiquidationStatus(status) {
+async function confirmLiquidationAction() {
+    if (selectedLiquidationIndex === null || !pendingLiquidationAction) return;
+    const remarks = document.getElementById("liquidationActionRemarks").value.trim();
+    const errorElement = document.getElementById("liquidationActionError");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
     try {
         const liquidation = liquidations[selectedLiquidationIndex];
         const response = await fetch(`${SERVER_URL}/api/liquidation/${liquidation.liquidationId}/status`, {
@@ -1386,18 +1403,27 @@ async function updateLiquidationStatus(status) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status: pendingLiquidationAction, remarks })
         });
         const data = await response.json();
         if (response.ok) {
-            liquidations[selectedLiquidationIndex].status = status;
+            liquidations[selectedLiquidationIndex].status = pendingLiquidationAction;
+            liquidations[selectedLiquidationIndex].remarks = remarks || liquidations[selectedLiquidationIndex].remarks;
             updateLiquidationTable();
             closeLiquidationPopup();
-            showToast(`Liquidation ${status.toLowerCase()} successfully`);
+            closeLiquidationActionModal();
+            showToast(`Liquidation ${pendingLiquidationAction.toLowerCase()} successfully`);
         } else {
-            showToast(data.error || "Status update failed");
+            errorElement.textContent = data.error || "Status update failed";
+            errorElement.style.display = "block";
         }
     } catch (error) {
-        showToast("Status update error: " + error.message);
+        errorElement.textContent = "Status update error: " + error.message;
+        errorElement.style.display = "block";
     }
+}
+
+function closeLiquidationPopup() {
+    document.getElementById("liquidationPopup").style.display = "none";
+    selectedLiquidationIndex = null;
 }

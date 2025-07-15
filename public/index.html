@@ -48,6 +48,7 @@
             border-radius: 10px;
             text-align: center;
             box-shadow: 0 0 10px rgba(0,0,0,0.25);
+            width: 400px;
         }
 
         .modal-confirm-content button {
@@ -58,8 +59,18 @@
             cursor: pointer;
             font-weight: bold;
         }
-        .confirm-delete { background: #d9534f; color: white; }
-        .cancel-delete { background: #ccc; }
+        .confirm-action { background: #5cb85c; color: white; }
+        .deny-action { background: #d9534f; color: white; }
+        .cancel-action { background: #ccc; color: black; }
+
+        .modal-confirm-content textarea {
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+        }
 
         .modal-content input {
             width: 100%;
@@ -239,6 +250,16 @@
                     </div>
                 </div>
             </div>
+            <div id="budgetActionModal" class="modal-confirm" style="display: none;">
+                <div class="modal-confirm-content">
+                    <h3 id="budgetActionTitle">Confirm Action</h3>
+                    <p id="budgetActionMessage">Are you sure you want to perform this action?</p>
+                    <textarea id="budgetActionRemarks" placeholder="Optional remarks..." rows="4"></textarea>
+                    <p id="budgetActionError" class="error-text" style="display: none; color: red;"></p>
+                    <button id="budgetConfirmAction" class="confirm-action">Confirm</button>
+                    <button class="cancel-action" onclick="closeBudgetActionModal()">Cancel</button>
+                </div>
+            </div>
         </div>
 
         <div id="expenses" class="tab">
@@ -337,6 +358,16 @@
                     <div class="popup-actions" id="liquidationActions" style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem;">
                         <!-- Buttons will be dynamically inserted -->
                     </div>
+                </div>
+            </div>
+            <div id="liquidationActionModal" class="modal-confirm" style="display: none;">
+                <div class="modal-confirm-content">
+                    <h3 id="liquidationActionTitle">Confirm Action</h3>
+                    <p id="liquidationActionMessage">Are you sure you want to perform this action?</p>
+                    <textarea id="liquidationActionRemarks" placeholder="Optional remarks..." rows="4"></textarea>
+                    <p id="liquidationActionError" class="error-text" style="display: none; color: red;"></p>
+                    <button id="liquidationConfirmAction" class="confirm-action">Confirm</button>
+                    <button class="cancel-action" onclick="closeLiquidationActionModal()">Cancel</button>
                 </div>
             </div>
         </div>
