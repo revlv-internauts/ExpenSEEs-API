@@ -606,8 +606,8 @@ tbody tr:hover {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: linear-gradient(135deg, #b52025, #d47278);
-    color: #f8e6e6;
+    background: linear-gradient(135deg, #008000, #2a6f2a);
+    color: #fff;
     padding: 1rem 1.5rem;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
