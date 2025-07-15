@@ -1056,7 +1056,7 @@ function getSortedExpenses() {
     });
 }
 
-async function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
+function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
     zoomLevel = 1;
@@ -1066,72 +1066,134 @@ async function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0)
     img.style.width = 'auto';
     img.style.height = 'auto';
 
-    try {
-        let imageUrls = [];
-        if (liquidationId) {
-            const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
-            if (liquidation && liquidation.expenses) {
-                imageUrls = liquidation.expenses.flatMap(exp => exp.imageUrls || []);
-            }
-        } else {
-            const expense = expenses.find(exp => exp.expenseId === expenseId);
-            if (expense && expense.imageUrls) {
-                imageUrls = expense.imageUrls;
-            }
-        }
+    // Update popup to include navigation buttons
+    const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
+    imageControls.innerHTML = `
+        <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
+            <i class="fas fa-search-plus"></i> Zoom In
+        </button>
+        <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
+            <i class="fas fa-search-minus"></i> Zoom Out
+        </button>
+        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
+            <i class="fas fa-arrow-left"></i> Previous
+        </button>
+        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
+            <i class="fas fa-arrow-right"></i> Next
+        </button>
+        <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+            <i class="fas fa-download"></i> Download
+        </button>
+    `;
 
-        currentExpenseImages = imageUrls;
-        currentImageIndex = imageIndex >= 0 && imageIndex < imageUrls.length ? imageIndex : 0;
+    if (liquidationId) {
+        const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
+        const expense = liquidation?.expenses.find(e => e.expenseId === expenseId);
+        currentExpenseImages = expense?.imagePaths || [];
+        currentImageIndex = imageIndex;
 
-        if (currentExpenseImages.length > 0) {
-            const response = await fetch(currentExpenseImages[currentImageIndex], {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const blob = await response.blob();
+        if (currentExpenseImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < currentExpenseImages.length) {
+            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images?index=${currentImageIndex}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
+                return response.blob();
+            })
+            .then(blob => {
                 img.src = URL.createObjectURL(blob);
                 popup.style.display = "flex";
-
-                img.addEventListener('mousedown', startDragging);
-                img.addEventListener('mousemove', drag);
-                img.addEventListener('mouseup', stopDragging);
-                img.addEventListener('mouseleave', stopDragging);
                 document.addEventListener('keydown', handleKeyZoom);
-            } else {
-                img.src = "images/no-image.png";
+            })
+            .catch(error => {
+                showToast("Failed to load image: " + error.message);
+                img.src = '';
                 popup.style.display = "flex";
-            }
+            });
         } else {
-            img.src = "images/no-image.png";
+            img.src = '';
             popup.style.display = "flex";
+            showToast("No images available for this expense");
         }
+    } else {
+        currentExpenseImages = [];
+        currentImageIndex = 0;
+        fetch(`${SERVER_URL}/api/expenses/${expenseId}/images?index=0`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
+            return response.blob();
+        })
+        .then(blob => {
+            img.src = URL.createObjectURL(blob);
+            popup.style.display = "flex";
+            document.addEventListener('keydown', handleKeyZoom);
+        })
+        .catch(error => {
+            showToast("Failed to load image: " + error.message);
+            img.src = '';
+            popup.style.display = "flex";
+        });
+    }
 
-        const prevButton = popup.querySelector('button[onclick="showPreviousImage()"]');
-        const nextButton = popup.querySelector('button[onclick="showNextImage()"]');
-        if (prevButton && nextButton) {
-            prevButton.style.display = currentExpenseImages.length > 1 ? 'inline-block' : 'none';
-            nextButton.style.display = currentExpenseImages.length > 1 ? 'inline-block' : 'none';
-        }
-    } catch (error) {
-        console.error("Error loading expense image:", error);
-        img.src = "images/no-image.png";
-        popup.style.display = "flex";
+    img.addEventListener('mousedown', startDragging);
+    img.addEventListener('mousemove', drag);
+    img.addEventListener('mouseup', stopDragging);
+    img.addEventListener('mouseleave', stopDragging);
+}
+
+function showPreviousImage() {
+    if (currentImageIndex > 0) {
+        currentImageIndex--;
+        const liquidation = liquidations[selectedLiquidationIndex];
+        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
+        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
     }
 }
 
-function startDragging(e) {
+function showNextImage() {
+    if (currentImageIndex < currentExpenseImages.length - 1) {
+        currentImageIndex++;
+        const liquidation = liquidations[selectedLiquidationIndex];
+        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
+        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
+    }
+}
+
+function zoomImage(direction) {
+    const img = document.getElementById("popup-expense-img");
+    if (direction === 'in' && zoomLevel < 3) {
+        zoomLevel += 0.2;
+    } else if (direction === 'out' && zoomLevel > 0.5) {
+        zoomLevel -= 0.2;
+    }
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+}
+
+function handleKeyZoom(event) {
+    if (event.key === '+' || event.key === '=') {
+        zoomImage('in');
+    } else if (event.key === '-' || event.key === '_') {
+        zoomImage('out');
+    }
+}
+
+function startDragging(event) {
+    if (zoomLevel <= 1) return;
     isDragging = true;
-    startX = e.clientX - panX;
-    startY = e.clientY - panY;
+    startX = event.clientX - panX;
+    startY = event.clientY - panY;
     document.getElementById("popup-expense-img").style.cursor = 'grabbing';
 }
 
-function drag(e) {
+function drag(event) {
     if (!isDragging) return;
-    e.preventDefault();
-    panX = e.clientX - startX;
-    panY = e.clientY - startY;
-    document.getElementById("popup-expense-img").style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+    event.preventDefault();
+    panX = event.clientX - startX;
+    panY = event.clientY - startY;
+    const img = document.getElementById("popup-expense-img");
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
 function stopDragging() {
@@ -1139,59 +1201,23 @@ function stopDragging() {
     document.getElementById("popup-expense-img").style.cursor = 'grab';
 }
 
-function zoomImage(direction) {
-    const img = document.getElementById("popup-expense-img");
-    if (direction === 'in' && zoomLevel < 3) {
-        zoomLevel += 0.1;
-    } else if (direction === 'out' && zoomLevel > 0.5) {
-        zoomLevel -= 0.1;
-    }
-    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-}
-
-function handleKeyZoom(e) {
-    if (e.key === '+' || e.key === '=') {
-        zoomImage('in');
-    } else if (e.key === '-') {
-        zoomImage('out');
-    }
-}
-
-function showPreviousImage() {
-    if (currentExpenseImages.length > 1) {
-        currentImageIndex = (currentImageIndex - 1 + currentExpenseImages.length) % currentExpenseImages.length;
-        showExpenseImage(null, liquidations.find(l => l.expenses.some(exp => exp.imageUrls.includes(currentExpenseImages[currentImageIndex]))).liquidationId, currentImageIndex);
-    }
-}
-
-function showNextImage() {
-    if (currentExpenseImages.length > 1) {
-        currentImageIndex = (currentImageIndex + 1) % currentExpenseImages.length;
-        showExpenseImage(null, liquidations.find(l => l.expenses.some(exp => exp.imageUrls.includes(currentExpenseImages[currentImageIndex]))).liquidationId, currentImageIndex);
-    }
-}
-
 async function downloadImage() {
-    if (currentExpenseImages.length === 0) return;
+    const img = document.getElementById("popup-expense-img");
+    if (!img.src) return;
+
     try {
-        const response = await fetch(currentExpenseImages[currentImageIndex], {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `expense_image_${currentImageIndex + 1}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } else {
-            showToast("Failed to download image");
-        }
+        const response = await fetch(img.src);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `expense-image-${currentImageIndex + 1}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     } catch (error) {
-        showToast("Download error: " + error.message);
+        showToast("Failed to download image: " + error.message);
     }
 }
 
