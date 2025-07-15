@@ -2,7 +2,11 @@ package com.example.expensetracker.controller;
 
 import com.example.expensetracker.Entity.Liquidation;
 import com.example.expensetracker.Entity.LiquidationExpenseItem;
+import com.example.expensetracker.Entity.SubmittedBudget;
+import com.example.expensetracker.dto.LiquidationExpenseItemDto;
 import com.example.expensetracker.service.LiquidationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -10,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,78 +36,101 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/liquidation")
+@Validated
 public class LiquidationReportController {
 
     @Autowired
     private LiquidationService liquidationService;
 
+    @Autowired
+    private Validator validator;
+
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> createLiquidation(
-            @RequestParam("category") String category,
-            @RequestParam("amount") Double amount,
-            @RequestParam(value = "remarks", required = false) String remarks,
-            @RequestParam("dateOfTransaction") String dateOfTransaction,
-            @RequestParam(value = "files", required = false) MultipartFile[] files,
+            @RequestParam(value = "expenses") String expensesJson,
+            @RequestParam(value = "expenses[0].files", required = false) MultipartFile[] files0,
+            @RequestParam(value = "expenses[1].files", required = false) MultipartFile[] files1,
+            @RequestParam(value = "expenses[2].files", required = false) MultipartFile[] files2,
+            @RequestParam(value = "expenses[3].files", required = false) MultipartFile[] files3,
             @RequestParam Long budgetId) {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Validate expense input
-            if (category == null || category.trim().isEmpty()) {
-                response.put("error", "Category is required");
+            // Parse expenses JSON
+            ObjectMapper mapper = new ObjectMapper();
+            List<LiquidationExpenseItemDto> expenseDtos = mapper.readValue(
+                    expensesJson,
+                    mapper.getTypeFactory().constructCollectionType(List.class, LiquidationExpenseItemDto.class)
+            );
+
+            if (expenseDtos == null || expenseDtos.isEmpty()) {
+                response.put("error", "At least one expense is required");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
-            if (amount == null || amount <= 0) {
-                response.put("error", "Amount must be a positive number");
-                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+
+            // Validate each expense DTO
+            for (LiquidationExpenseItemDto dto : expenseDtos) {
+                var violations = validator.validate(dto);
+                if (!violations.isEmpty()) {
+                    StringBuilder errorMessage = new StringBuilder("Validation errors: ");
+                    violations.forEach(v -> errorMessage.append(v.getMessage()).append("; "));
+                    response.put("error", errorMessage.toString());
+                    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                }
             }
-            LocalDate expenseDate = LocalDate.parse(dateOfTransaction);
 
             // Create liquidation
             Liquidation liquidation = new Liquidation();
-            liquidation.setDateOfTransaction(expenseDate);
+            liquidation.setDateOfTransaction(expenseDtos.get(0).getDateOfTransaction() != null
+                    ? LocalDate.parse(expenseDtos.get(0).getDateOfTransaction())
+                    : LocalDate.now());
 
-            // Create expense item
+            // Create expense items and associate files
             List<LiquidationExpenseItem> expenses = new ArrayList<>();
-            LiquidationExpenseItem expense = new LiquidationExpenseItem();
-            expense.setCategory(category);
-            expense.setAmount(amount);
-            expense.setRemarks(remarks != null ? remarks : "");
-            expense.setDateOfTransaction(expenseDate);
-            expenses.add(expense);
+            MultipartFile[][] allFiles = {files0, files1, files2, files3}; // Support up to 4 expenses
+            for (int i = 0; i < expenseDtos.size(); i++) {
+                LiquidationExpenseItemDto dto = expenseDtos.get(i);
+                LiquidationExpenseItem expense = new LiquidationExpenseItem();
+                expense.setCategory(dto.getCategory());
+                expense.setAmount(dto.getAmount());
+                expense.setRemarks(dto.getRemarks() != null ? dto.getRemarks() : "");
+                expense.setDateOfTransaction(LocalDate.parse(dto.getDateOfTransaction()));
 
-            // Handle file uploads
-            if (files != null && files.length > 0 && !files[0].isEmpty()) {
-                String uploadDir = "Uploads/";
-                Path uploadPath = Paths.get(uploadDir);
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
-                }
-
+                // Handle file uploads for this expense
                 List<String> imagePaths = new ArrayList<>();
-                for (MultipartFile file : files) {
-                    if (!file.isEmpty()) {
-                        String contentType = file.getContentType();
-                        if (contentType == null || !contentType.startsWith("image/")) {
-                            response.put("error", "Only image files are allowed");
-                            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-                        }
-                        BufferedImage image = ImageIO.read(file.getInputStream());
-                        if (image == null) {
-                            response.put("error", "Invalid image file: " + file.getOriginalFilename());
-                            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-                        }
-                        String fileName = UUID.randomUUID() + ".jpg";
-                        Path filePath = uploadPath.resolve(fileName);
+                MultipartFile[] files = i < allFiles.length ? allFiles[i] : null;
+                if (files != null && files.length > 0 && !files[0].isEmpty()) {
+                    String uploadDir = "Uploads/";
+                    Path uploadPath = Paths.get(uploadDir);
+                    if (!Files.exists(uploadPath)) {
+                        Files.createDirectories(uploadPath);
+                    }
 
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        ImageIO.write(image, "jpg", baos);
-                        Files.write(filePath, baos.toByteArray());
+                    for (MultipartFile file : files) {
+                        if (!file.isEmpty()) {
+                            String contentType = file.getContentType();
+                            if (contentType == null || !contentType.startsWith("image/")) {
+                                response.put("error", "Only image files are allowed for expense " + i);
+                                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                            }
+                            BufferedImage image = ImageIO.read(file.getInputStream());
+                            if (image == null) {
+                                response.put("error", "Invalid image file for expense " + i + ": " + file.getOriginalFilename());
+                                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+                            }
+                            String fileName = UUID.randomUUID() + ".jpg";
+                            Path filePath = uploadPath.resolve(fileName);
 
-                        imagePaths.add(uploadDir + fileName);
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            ImageIO.write(image, "jpg", baos);
+                            Files.write(filePath, baos.toByteArray());
+
+                            imagePaths.add(uploadDir + fileName);
+                        }
                     }
                 }
                 expense.setImagePaths(imagePaths);
+                expenses.add(expense);
             }
 
             // Create liquidation
@@ -128,10 +157,22 @@ public class LiquidationReportController {
                 response.put("error", "Liquidation not found with ID: " + liquidationId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
-            return ResponseEntity.ok(liquidation);
+            // Include budget name
+            SubmittedBudget budget = liquidation.getSubmittedBudget();
+            response.put("liquidationId", liquidation.getLiquidationId());
+            response.put("budgetName", budget != null ? budget.getName() : "Unknown");
+            response.put("totalSpent", liquidation.getTotalSpent());
+            response.put("remainingBalance", liquidation.getRemainingBalance());
+            response.put("status", liquidation.getStatus().toString());
+            response.put("remarks", liquidation.getRemarks());
+            response.put("dateOfTransaction", liquidation.getDateOfTransaction());
+            response.put("createdAt", liquidation.getCreatedAt());
+            response.put("expenses", liquidation.getExpenses());
+            response.put("username", liquidation.getUsername());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("error", "Failed to retrieve liquidation: " + e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -207,6 +248,22 @@ public class LiquidationReportController {
                     .body(resource);
         } catch (IOException e) {
             response.put("error", "Failed to retrieve image: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/{liquidationId}")
+    public ResponseEntity<Map<String, String>> deleteLiquidation(@PathVariable Long liquidationId) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            ResponseEntity<String> result = liquidationService.deleteLiquidation(liquidationId);
+            response.put("message", result.getBody());
+            return new ResponseEntity<>(response, result.getStatusCode());
+        } catch (IllegalArgumentException e) {
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            response.put("error", "Failed to delete liquidation: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

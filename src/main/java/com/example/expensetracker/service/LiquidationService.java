@@ -71,9 +71,6 @@ public class LiquidationService {
                 .sum();
         liquidation.setTotalSpent(totalSpent);
         double remainingBalance = submittedBudget.getTotal() - totalSpent;
-        if (remainingBalance < 0) {
-            throw new IllegalArgumentException("Total spent exceeds the budget's total amount");
-        }
         liquidation.setRemainingBalance(remainingBalance);
         liquidation.setStatus(Liquidation.Status.PENDING);
         liquidation.setExpenses(expenses.stream()
@@ -125,7 +122,6 @@ public class LiquidationService {
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
 
-
     public Liquidation getLiquidationById(Long liquidationId) {
         Liquidation liquidation = liquidationRepository.findById(liquidationId)
                 .orElseThrow(() -> new IllegalArgumentException("Liquidation not found with ID: " + liquidationId));
@@ -137,6 +133,28 @@ public class LiquidationService {
             throw new UnauthorizedAccessException("Unauthorized access to liquidation");
         }
         return liquidation;
+    }
+
+    @Transactional
+    public ResponseEntity<String> deleteLiquidation(Long liquidationId) {
+        if (liquidationId == null) {
+            return new ResponseEntity<>("Liquidation ID is required", HttpStatus.BAD_REQUEST);
+        }
+        User currentUser = userRepository.findByUsername(getCurrentUsername());
+        if (currentUser == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.UNAUTHORIZED);
+        }
+        if (liquidationRepository.findById(liquidationId).isEmpty()) {
+            return new ResponseEntity<>("Liquidation not found", HttpStatus.NOT_FOUND);
+        }
+        Liquidation liquidation = liquidationRepository.findById(liquidationId).get();
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !liquidation.getUser().getUserId().equals(currentUser.getUserId())) {
+            return new ResponseEntity<>("Unauthorized: You can only delete your own liquidations", HttpStatus.FORBIDDEN);
+        }
+        liquidationRepository.delete(liquidation);
+        return new ResponseEntity<>("Liquidation deleted successfully", HttpStatus.OK);
     }
 
     private String getCurrentUsername() {
