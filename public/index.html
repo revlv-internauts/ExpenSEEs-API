@@ -68,6 +68,38 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
+        .user-popup .modal-content {
+            width: 400px;
+            text-align: left;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .user-popup .popup-actions {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .user-popup .popup-actions button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .user-profile-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+            border: 1px solid #f46354;
+        }
     </style>
 </head>
 <body>
@@ -304,7 +336,7 @@
                     <h3 id="admin-info-title">Admin Information</h3>
                     <div class="info-row">
                         <div class="profile-picture-container">
-                            <img id="admin-profile-picture" src="Uploads/public/default-profile.jpg" alt="Admin Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid #f46354;">
+                            <img id="admin-profile-picture" src="images/default-profile.png" alt="Admin Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid #f46354;">
                             <div class="profile-picture-upload">
                                 <input type="file" id="profile-picture-input" accept="image/*" style="display: none;">
                                 <button class="profile-button" onclick="document.getElementById('profile-picture-input').click()">Change Picture</button>
@@ -341,31 +373,6 @@
                         </div>
                         <p id="admin-reset-error" class="error-text" style="display: none;"></p>
                         <button type="submit" class="profile-button">Reset Password</button>
-                    </form>
-                </div>
-                <div class="profile-card" role="region" aria-labelledby="user-reset-title">
-                    <h3 id="user-reset-title">Reset User Password</h3>
-                    <form id="user-reset-password-form" class="profile-form" aria-labelledby="user-reset-title">
-                        <div class="form-group">
-                            <label for="user-email">User Email</label>
-                            <input type="email" id="user-email" required>
-                        </div>
-                        <div class="form-group password-wrapper">
-                            <label for="user-new-password">New Password</label>
-                            <input type="password" id="user-new-password" required>
-                            <span class="toggle-password" onclick="togglePassword('user-new-password', this)" aria-label="Toggle password visibility">
-                                <i class="fa-solid fa-eye-slash"></i>
-                            </span>
-                        </div>
-                        <div class="form-group password-wrapper">
-                            <label for="user-confirm-password">Confirm New Password</label>
-                            <input type="password" id="user-confirm-password" required>
-                            <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)" aria-label="Toggle password visibility">
-                                <i class="fa-solid fa-eye-slash"></i>
-                            </span>
-                        </div>
-                        <p id="user-reset-error" class="error-text" style="display: none;"></p>
-                        <button type="submit" class="profile-button">Reset User Password</button>
                     </form>
                 </div>
             </div>
