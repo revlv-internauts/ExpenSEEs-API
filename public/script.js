@@ -1,4 +1,4 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
                                             // Change to "http://localhost:8080" for local testing
 let users = [];
 let expenses = [];
@@ -264,7 +264,9 @@ async function updateDashboard() {
                 username: b.username || "Unknown",
                 name: b.name || "No Name",
                 amount: b.total || 0,
+                date: b.date || new Date().toISOString(),
                 status: b.status || "PENDING",
+                remarks: b.remarks || "",
                 expenses: b.expenses || []
             }));
         }
@@ -715,11 +717,16 @@ async function filterUsers() {
 }
 
 // =================== BUDGET FUNCTIONS ===================
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+}
+
 function updateBudgetTable() {
     const tbody = document.getElementById("budget-table");
     tbody.innerHTML = "";
 
-    const sortValue = document.getElementById("sortBudget")?.value || "username";
+    const sortValue = document.getElementById("sortBudget")?.value || "date";
     const searchValue = document.getElementById("searchBudget")?.value.toLowerCase() || "";
 
     let filteredBudgets = budgetRequests;
@@ -728,7 +735,9 @@ function updateBudgetTable() {
             (req.username?.toLowerCase().includes(searchValue) || '') ||
             (req.name?.toLowerCase().includes(searchValue) || '') ||
             (req.amount?.toString().includes(searchValue) || '') ||
-            (req.status?.toLowerCase().includes(searchValue) || '')
+            (formatDate(req.date).toLowerCase().includes(searchValue) || '') ||
+            (req.status?.toLowerCase().includes(searchValue) || '') ||
+            (req.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
 
@@ -740,10 +749,12 @@ function updateBudgetTable() {
                               req.status === "RELEASED" ? "badge-released" :
                               "badge-denied";
             row.innerHTML = `
+                <td>${formatDate(req.date)}</td>
                 <td>${req.username}</td>
                 <td>${req.name}</td>
                 <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td><span class="status-badge ${statusClass}">${req.status}</span></td>
+                <td>${req.remarks || ''}</td>
                 <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
             `;
             tbody.appendChild(row);
@@ -754,6 +765,7 @@ function updateBudgetTable() {
             budgets.forEach(req => {
                 let groupKey;
                 switch (key) {
+                    case "date": groupKey = req.date ? formatDate(req.date).slice(0, 7) : 'No Date'; break; // Group by YYYY-MM
                     case "username": groupKey = req.username || 'Unknown'; break;
                     case "name": groupKey = req.name || 'No Name'; break;
                     case "status": groupKey = req.status || 'PENDING'; break;
@@ -766,21 +778,28 @@ function updateBudgetTable() {
 
         const groupedBudgets = groupBudgets(filteredBudgets, sortValue);
 
-        Object.keys(groupedBudgets).sort().forEach((groupKey, index) => {
+        Object.keys(groupedBudgets).sort((a, b) => {
+            if (sortValue === "date") {
+                return a.localeCompare(b); // Sort by YYYY-MM
+            }
+            return a.localeCompare(b);
+        }).forEach((groupKey, index) => {
             const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="5" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
+            headerRow.innerHTML = `<td colspan="7" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
 
-            groupedBudgets[groupKey].forEach(req => {
+            groupedBudgets[groupKey].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(req => {
                 const row = document.createElement("tr");
                 const statusClass = req.status === "PENDING" ? "badge-pending" :
                                   req.status === "RELEASED" ? "badge-released" :
                                   "badge-denied";
                 row.innerHTML = `
+                    <td>${formatDate(req.date)}</td>
                     <td>${req.username}</td>
                     <td>${req.name}</td>
                     <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td><span class="status-badge ${statusClass}">${req.status}</span></td>
+                    <td>${req.remarks || ''}</td>
                     <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
                 `;
                 tbody.appendChild(row);
@@ -788,7 +807,7 @@ function updateBudgetTable() {
 
             if (index < Object.keys(groupedBudgets).length - 1) {
                 const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="5" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
+                separatorRow.innerHTML = `<td colspan="7" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
                 tbody.appendChild(separatorRow);
             }
         });
@@ -812,6 +831,9 @@ function showBudgetDetails(index) {
 
     detailsDiv.innerHTML = `
         <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Date:</span> <span style="word-break: break-word;">${formatDate(budget.date)}</span>
+        </div>
+        <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${budget.username || 'Unknown'}</span>
         </div>
         <div>
@@ -822,6 +844,9 @@ function showBudgetDetails(index) {
         </div>
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "RELEASED" ? "badge-released" : "badge-denied"}" style="word-break: break-word;">${budget.status || 'PENDING'}</span>
+        </div>
+        <div>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${budget.remarks || 'None'}</span>
         </div>
         <h4 style="margin: 1rem 0;">Associated Expense Items:</h4>
         ${budget.expenses && budget.expenses.length > 0 ? `
@@ -912,7 +937,7 @@ function updateExpenseTable() {
             (exp.username?.toLowerCase().includes(searchValue) || '') ||
             (exp.category?.toLowerCase().includes(searchValue) || '') ||
             (exp.amount?.toString().includes(searchValue) || '') ||
-            (exp.dateOfTransaction?.toLowerCase().includes(searchValue) || '') ||
+            (exp.dateOfTransaction ? formatDate(exp.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
             (exp.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
@@ -921,10 +946,10 @@ function updateExpenseTable() {
         filteredExpenses.forEach(exp => {
             const row = document.createElement("tr");
             row.innerHTML = `
+                <td>${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : ''}</td>
                 <td>${exp.username || 'Unknown'}</td>
                 <td>${exp.category || ''}</td>
                 <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${exp.dateOfTransaction || ''}</td>
                 <td>${exp.remarks || ''}</td>
                 <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
             `;
@@ -937,7 +962,7 @@ function updateExpenseTable() {
                 let groupKey;
                 switch (key) {
                     case "date":
-                        groupKey = exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date';
+                        groupKey = exp.dateOfTransaction ? formatDate(exp.dateOfTransaction).slice(0, 7) : 'No Date';
                         break;
                     case "user":
                         groupKey = exp.username || 'Unknown';
@@ -962,10 +987,10 @@ function updateExpenseTable() {
             groupedExpenses[groupKey].forEach(exp => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
+                    <td>${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : ''}</td>
                     <td>${exp.username || 'Unknown'}</td>
                     <td>${exp.category || ''}</td>
                     <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>${exp.dateOfTransaction || ''}</td>
                     <td>${exp.remarks || ''}</td>
                     <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
                 `;
@@ -1150,35 +1175,19 @@ function stopDragging() {
 
 async function downloadImage() {
     const img = document.getElementById("popup-expense-img");
-    if (!img.src) {
-        showToast("No image available to download");
-        return;
-    }
+    if (!img.src) return;
 
     try {
-        let url;
-        if (currentExpenseImages.length > 0) {
-            const liquidation = liquidations[selectedLiquidationIndex];
-            url = `${SERVER_URL}/api/liquidation/${liquidation.liquidationId}/images?index=${currentImageIndex}`;
-        } else {
-            const expenseId = expenses.find(exp => exp.imagePaths?.includes(img.src.split('/').pop()))?.expenseId;
-            url = `${SERVER_URL}/api/expenses/${expenseId}/images?index=0`;
-        }
-
-        const response = await fetch(url, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error("Failed to fetch image");
-
+        const response = await fetch(img.src);
         const blob = await response.blob();
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `expense-image-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        showToast("Image downloaded successfully");
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `expense-image-${currentImageIndex + 1}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     } catch (error) {
         showToast("Failed to download image: " + error.message);
     }
@@ -1189,80 +1198,84 @@ function updateLiquidationTable() {
     const tbody = document.getElementById("liquidation-table");
     tbody.innerHTML = "";
 
-    const sortValue = document.getElementById("sortLiquidation")?.value || "username";
+    const sortValue = document.getElementById("sortLiquidation")?.value || "date";
     const searchValue = document.getElementById("searchLiquidation")?.value.toLowerCase() || "";
 
     let filteredLiquidations = liquidations;
     if (searchValue) {
-        filteredLiquidations = liquidations.filter(l =>
-            (l.username?.toLowerCase().includes(searchValue) || '') ||
-            (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
-            (l.amount?.toString().includes(searchValue) || '') ||
-            (l.totalSpent?.toString().includes(searchValue) || '') ||
-            (l.remainingBalance?.toString().includes(searchValue) || '') ||
-            (l.status?.toLowerCase().includes(searchValue) || '') ||
-            (l.remarks?.toLowerCase().includes(searchValue) || '')
+        filteredLiquidations = liquidations.filter(liq =>
+            (liq.username?.toLowerCase().includes(searchValue) || '') ||
+            (liq.budgetName?.toLowerCase().includes(searchValue) || '') ||
+            (liq.amount?.toString().includes(searchValue) || '') ||
+            (formatDate(liq.dateOfTransaction).toLowerCase().includes(searchValue) || '') ||
+            (liq.status?.toLowerCase().includes(searchValue) || '') ||
+            (liq.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
 
     if (sortValue === "amount") {
         const sortedLiquidations = [...filteredLiquidations].sort((a, b) => (b.amount || 0) - (a.amount || 0));
-        sortedLiquidations.forEach((l, index) => {
+        sortedLiquidations.forEach((liq, index) => {
             const row = document.createElement("tr");
-            const statusClass = l.status === "PENDING" ? "badge-pending" :
-                              l.status === "LIQUIDATED" ? "badge-liquidated" :
+            const statusClass = liq.status === "PENDING" ? "badge-pending" :
+                              liq.status === "LIQUIDATED" ? "badge-liquidated" :
                               "badge-denied";
             row.innerHTML = `
-                <td>${l.username}</td>
-                <td>${new Date(l.dateOfTransaction).toLocaleDateString()}</td>
-                <td>${l.budgetName}</td>
-                <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><span class="status-badge ${statusClass}">${l.status}</span></td>
-                <td>${l.remarks || ''}</td>
-                <td><button onclick="showLiquidationDetails(${liquidations.findIndex(li => li.liquidationId === l.liquidationId)})">View</button></td>
+                <td>${formatDate(liq.dateOfTransaction)}</td>
+                <td>${liq.username || 'Unknown'}</td>
+                <td>${liq.budgetName || 'No Name'}</td>
+                <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td><span class="status-badge ${statusClass}">${liq.status}</span></td>
+                <td>${liq.remarks || ''}</td>
+                <td><button onclick="showLiquidationDetails(${liquidations.findIndex(l => l.liquidationId === liq.liquidationId)})">View</button></td>
             `;
             tbody.appendChild(row);
         });
     } else {
         const groupLiquidations = (liquidations, key) => {
             const groups = {};
-            liquidations.forEach(l => {
+            liquidations.forEach(liq => {
                 let groupKey;
                 switch (key) {
-                    case "username": groupKey = l.username || 'Unknown'; break;
-                    case "date": groupKey = l.dateOfTransaction ? new Date(l.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date'; break;
-                    case "status": groupKey = l.status || 'PENDING'; break;
+                    case "date": groupKey = liq.dateOfTransaction ? formatDate(liq.dateOfTransaction).slice(0, 7) : 'No Date'; break;
+                    case "username": groupKey = liq.username || 'Unknown'; break;
+                    case "status": groupKey = liq.status || 'PENDING'; break;
                 }
                 if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(l);
+                groups[groupKey].push(liq);
             });
             return groups;
         };
 
         const groupedLiquidations = groupLiquidations(filteredLiquidations, sortValue);
 
-        Object.keys(groupedLiquidations).sort().forEach((groupKey, index) => {
+        Object.keys(groupedLiquidations).sort((a, b) => {
+            if (sortValue === "date") {
+                return a.localeCompare(b); // Sort by YYYY-MM
+            }
+            return a.localeCompare(b);
+        }).forEach((groupKey, index) => {
             const headerRow = document.createElement("tr");
             headerRow.innerHTML = `<td colspan="9" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
 
-            groupedLiquidations[groupKey].forEach(l => {
+            groupedLiquidations[groupKey].sort((a, b) => new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction)).forEach(liq => {
                 const row = document.createElement("tr");
-                const statusClass = l.status === "PENDING" ? "badge-pending" :
-                                  l.status === "LIQUIDATED" ? "badge-liquidated" :
+                const statusClass = liq.status === "PENDING" ? "badge-pending" :
+                                  liq.status === "LIQUIDATED" ? "badge-liquidated" :
                                   "badge-denied";
                 row.innerHTML = `
-                    <td>${l.username}</td>
-                    <td>${new Date(l.dateOfTransaction).toLocaleDateString()}</td>
-                    <td>${l.budgetName}</td>
-                    <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td><span class="status-badge ${statusClass}">${l.status}</span></td>
-                    <td>${l.remarks || ''}</td>
-                    <td><button onclick="showLiquidationDetails(${liquidations.findIndex(li => li.liquidationId === l.liquidationId)})">View</button></td>
+                    <td>${formatDate(liq.dateOfTransaction)}</td>
+                    <td>${liq.username || 'Unknown'}</td>
+                    <td>${liq.budgetName || 'No Name'}</td>
+                    <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td><span class="status-badge ${statusClass}">${liq.status}</span></td>
+                    <td>${liq.remarks || ''}</td>
+                    <td><button onclick="showLiquidationDetails(${liquidations.findIndex(l => l.liquidationId === liq.liquidationId)})">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1295,13 +1308,13 @@ function showLiquidationDetails(index) {
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${new Date(liquidation.dateOfTransaction).toLocaleDateString()}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${formatDate(liquidation.dateOfTransaction)}</span>
         </div>
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Spent:</span> <span style="word-break: break-word;">₱${(liquidation.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1327,14 +1340,13 @@ function showLiquidationDetails(index) {
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString() : 'N/A'}</span>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : 'N/A'}</span>
                         </div>
                         <div>
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span>
-                            <button onclick="showExpenseImage(${exp.expenseId}, ${liquidation.liquidationId}, 0)">View</button>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> <button onclick="showExpenseImage(${exp.expenseId}, ${liquidation.liquidationId}, 0)">View</button>
                         </div>
                     </li>
                 `).join('')}
@@ -1381,7 +1393,6 @@ async function updateLiquidationStatus(status) {
             liquidations[selectedLiquidationIndex].status = status;
             updateLiquidationTable();
             closeLiquidationPopup();
-            updateDashboard(); // Update dashboard to reflect new liquidation status
             showToast(`Liquidation ${status.toLowerCase()} successfully`);
         } else {
             showToast(data.error || "Status update failed");

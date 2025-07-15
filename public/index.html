@@ -203,6 +203,7 @@
                 <h3>Budget Requests</h3>
                 <div class="table-actions">
                     <select id="sortBudget" onchange="updateBudgetTable()">
+                        <option value="date">Sort by Budget Date</option>
                         <option value="username">Sort by Username</option>
                         <option value="name">Sort by Request</option>
                         <option value="amount">Sort by Amount (High to Low)</option>
@@ -217,10 +218,12 @@
             <table>
                 <thead>
                 <tr>
+                    <th>Budget Date</th>
                     <th>Username</th>
                     <th>Request</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Remarks</th>
                     <th>Action</th>
                 </tr>
                 </thead>
@@ -257,7 +260,7 @@
                 <p id="no-expenses-message" style="display:none; color: red; margin-top: 10px;">No expenses found.</p>
                 <table>
                     <thead>
-                    <tr><th>Username</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Receipt</th></tr>
+                    <tr><th>Date</th><th>Username</th><th>Category</th><th>Amount</th><th>Remarks</th><th>Receipt</th></tr>
                     </thead>
                     <tbody id="expenses-table"></tbody>
                 </table>
@@ -312,8 +315,8 @@
                 <table>
                     <thead>
                     <tr>
-                        <th>Username</th>
                         <th>Date</th>
+                        <th>Username</th>
                         <th>Request</th>
                         <th>Amount</th>
                         <th>Total Spent</th>
