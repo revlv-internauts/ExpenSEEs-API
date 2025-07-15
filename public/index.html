@@ -141,21 +141,24 @@
             </header>
             <div class="balance-section">
                 <div class="balance-card">
+                    <div class="label">Active Users</div>
+                    <h1>0</h1>
+                    <div class="date">Non-admin users</div>
+                </div>
+                <div class="balance-card">
                     <div class="label">Total Budget Expense</div>
                     <h1>₱0</h1>
                     <div class="date">Released Budgets</div>
                 </div>
                 <div class="balance-card">
-                    <div class="label">Active Users</div>
-                    <h1>0</h1>
-                    <div class="date">Non-admin users</div>
+                    <div class="label">Total Spent</div>
+                    <h1>₱0</h1>
+                    <div class="date">Liquidated Budgets</div>
                 </div>
-                <div class="notifications-card">
-                    <h4>Recent Notifications</h4>
-                    <div id="notifications-list" style="max-height: 200px; overflow-y: auto;">
-                        <!-- Notifications will be populated here -->
-                    </div>
-                    <p id="no-notifications-message" style="display:none; color: red; margin-top: 10px;">No notifications available.</p>
+                <div class="balance-card">
+                    <div class="label">Total Reimbursed</div>
+                    <h1>₱0</h1>
+                    <div class="date">Liquidated Budgets</div>
                 </div>
                 <div class="chart-card">
                     <h4>Top Expense Categories</h4>
@@ -164,6 +167,14 @@
                 <div class="chart-card">
                     <h4>Top Users by Expenses</h4>
                     <canvas id="userChart" style="max-height: 250px;"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h4>Monthly Spending Trend</h4>
+                    <canvas id="monthlySpendingChart" style="max-height: 250px;"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h4>Budget Status Distribution</h4>
+                    <canvas id="budgetStatusChart" style="max-height: 250px;"></canvas>
                 </div>
             </div>
         </div>

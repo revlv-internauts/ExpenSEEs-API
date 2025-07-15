@@ -1,11 +1,9 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
-                                            // Change to "http://localhost:8080" for local testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
 
 let users = [];
 let expenses = [];
 let budgetRequests = [];
 let liquidations = [];
-let notifications = [];
 let token = null;
 let selectedUserIndex = null;
 let userDetailsPopup = null;
@@ -17,7 +15,7 @@ let zoomLevel = 1;
 let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
-let categoryChart, userChart;
+let categoryChart, userChart, monthlySpendingChart, budgetStatusChart;
 let currentUser = null;
 let currentUserId = null;
 
@@ -72,6 +70,8 @@ function logout() {
     document.getElementById("login-screen").style.display = "flex";
     if (categoryChart) categoryChart.destroy();
     if (userChart) userChart.destroy();
+    if (monthlySpendingChart) monthlySpendingChart.destroy();
+    if (budgetStatusChart) budgetStatusChart.destroy();
     document.getElementById("admin-profile-picture").src = "images/default-profile.png";
 }
 
@@ -289,25 +289,12 @@ async function updateDashboard() {
             }));
         }
 
-        // NOTIFICATIONS
-        const notificationsRes = await fetch(`${SERVER_URL}/api/admin/notifications`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const notificationsData = await notificationsRes.json();
-        if (notificationsRes.ok) {
-            notifications = notificationsData.map(n => ({
-                userId: n.userId,
-                username: n.username || "Unknown",
-                action: n.action || "Unknown action",
-                details: n.details || "",
-                timestamp: n.timestamp || new Date().toISOString()
-            }));
-        }
-
         // UPDATE UI
-        document.querySelector(".balance-card h1").textContent = `₱${(budgetRequests.filter(b => b.status === "RELEASED").reduce((sum, b) => sum + (b.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        document.querySelectorAll(".balance-card h1")[1].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
-        updateNotifications();
+        const balanceCards = document.querySelectorAll(".balance-card h1");
+        balanceCards[0].textContent = users.filter(u => u.username?.toLowerCase() !== "admin").length;
+        balanceCards[1].textContent = `₱${(budgetRequests.filter(b => b.status === "RELEASED").reduce((sum, b) => sum + (b.amount || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        balanceCards[2].textContent = `₱${(liquidations.filter(l => l.status === "LIQUIDATED").reduce((sum, l) => sum + (l.totalSpent || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        balanceCards[3].textContent = `₱${(liquidations.filter(l => l.status === "LIQUIDATED").reduce((sum, l) => sum + ((l.amount || 0) - (l.totalSpent || 0)), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         updateCharts();
         updateUserTable();
         updateBudgetTable();
@@ -319,34 +306,9 @@ async function updateDashboard() {
     }
 }
 
-// =================== NOTIFICATIONS ===================
-function updateNotifications() {
-    const notificationsList = document.getElementById("notifications-list");
-    notificationsList.innerHTML = "";
-
-    if (notifications.length === 0) {
-        document.getElementById("no-notifications-message").style.display = "block";
-        return;
-    }
-
-    document.getElementById("no-notifications-message").style.display = "none";
-
-    notifications
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 5)
-        .forEach(notification => {
-            const div = document.createElement("div");
-            div.className = "notification-item";
-            div.innerHTML = `
-                <p><strong>${notification.username}</strong> ${notification.action}</p>
-                <p style="color: #555; font-size: 0.8rem;">${new Date(notification.timestamp).toLocaleString()}</p>
-            `;
-            notificationsList.appendChild(div);
-        });
-}
-
 // =================== CHARTS ===================
 function updateCharts() {
+    // Category Chart
     const categoryTotals = expenses.reduce((acc, exp) => {
         const cat = exp.category || "Uncategorized";
         acc[cat] = (acc[cat] || 0) + (exp.amount || 0);
@@ -381,6 +343,7 @@ function updateCharts() {
         }
     });
 
+    // User Chart
     const userTotals = expenses.reduce((acc, exp) => {
         const user = exp.username || "Unknown";
         acc[user] = (acc[user] || 0) + (exp.amount || 0);
@@ -412,6 +375,82 @@ function updateCharts() {
                 y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } }
             },
             plugins: { legend: { display: false } }
+        }
+    });
+
+    // Monthly Spending Trend Chart
+    const monthlyTotals = expenses.reduce((acc, exp) => {
+        const date = new Date(exp.dateOfTransaction);
+        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        acc[monthYear] = (acc[monthYear] || 0) + (exp.amount || 0);
+        return acc;
+    }, {});
+    const today = new Date();
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        months.push(monthYear);
+    }
+    const monthlyLabels = months.map(my => {
+        const [year, month] = my.split('-');
+        return new Date(year, month - 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    });
+    const monthlyData = months.map(my => monthlyTotals[my] || 0);
+
+    if (monthlySpendingChart) monthlySpendingChart.destroy();
+    monthlySpendingChart = new Chart(document.getElementById("monthlySpendingChart"), {
+        type: "line",
+        data: {
+            labels: monthlyLabels,
+            datasets: [{
+                label: "Monthly Expenses",
+                data: monthlyData,
+                borderColor: "rgba(229, 115, 115, 1)",
+                backgroundColor: "rgba(229, 115, 115, 0.2)",
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } },
+                x: { title: { display: true, text: "Month" } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Budget Status Distribution Chart
+    const statusCounts = budgetRequests.reduce((acc, req) => {
+        const status = req.status || "PENDING";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {});
+    const statusLabels = ["PENDING", "RELEASED", "DENIED"];
+    const statusData = statusLabels.map(status => statusCounts[status] || 0);
+    const statusColors = ["#f0ad4e", "#5cb85c", "#d9534f"];
+
+    if (budgetStatusChart) budgetStatusChart.destroy();
+    budgetStatusChart = new Chart(document.getElementById("budgetStatusChart"), {
+        type: "pie",
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: statusColors,
+                borderColor: "#fff",
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
         }
     });
 }
@@ -642,6 +681,9 @@ function closePopup(popupElement = null) {
         img.removeEventListener('mouseleave', stopDragging);
         currentExpenseImages = [];
         currentImageIndex = 0;
+        zoomLevel = 1;
+        panX = 0;
+        panY = 0;
     }
     userDetailsPopup = null;
     selectedUserIndex = null;
@@ -1053,7 +1095,7 @@ function showPreviousImage() {
         currentImageIndex--;
         const liquidation = liquidations[selectedLiquidationIndex];
         const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense.expenseId, liquidation.liquidationId, currentImageIndex);
+        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
     }
 }
 
@@ -1062,74 +1104,83 @@ function showNextImage() {
         currentImageIndex++;
         const liquidation = liquidations[selectedLiquidationIndex];
         const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense.expenseId, liquidation.liquidationId, currentImageIndex);
+        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
     }
 }
 
 function zoomImage(direction) {
     const img = document.getElementById("popup-expense-img");
-    let newZoom = zoomLevel + (direction === 'in' ? 0.1 : -0.1);
-    newZoom = Math.max(0.5, Math.min(3, newZoom));
-    if (newZoom !== zoomLevel) {
-        zoomLevel = newZoom;
-        const rect = img.getBoundingClientRect();
-        const container = img.parentElement.getBoundingClientRect();
-        const centerX = (container.width - rect.width) / 2 + panX;
-        const centerY = (container.height - rect.height) / 2 + panY;
-        const scaleFactor = newZoom / zoomLevel;
-        panX = centerX * (1 - scaleFactor);
-        panY = centerY * (1 - scaleFactor);
-        img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-        if (zoomLevel <= 0.5 || zoomLevel >= 3) {
-            img.style.opacity = '0.7';
-            setTimeout(() => img.style.opacity = '1', 200);
-        }
+    if (direction === 'in' && zoomLevel < 3) {
+        zoomLevel += 0.2;
+    } else if (direction === 'out' && zoomLevel > 0.5) {
+        zoomLevel -= 0.2;
     }
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
 function handleKeyZoom(event) {
-    if (document.getElementById("expenseImagePopup").style.display === "flex") {
-        if (event.key === '+') zoomImage('in');
-        else if (event.key === '-') zoomImage('out');
+    if (event.key === '+' || event.key === '=') {
+        zoomImage('in');
+    } else if (event.key === '-' || event.key === '_') {
+        zoomImage('out');
     }
 }
 
 function startDragging(event) {
-    if (zoomLevel > 1) {
-        isDragging = true;
-        const img = document.getElementById("popup-expense-img");
-        img.style.cursor = 'grabbing';
-        startX = event.clientX;
-        startY = event.clientY;
-    }
+    if (zoomLevel <= 1) return;
+    isDragging = true;
+    startX = event.clientX - panX;
+    startY = event.clientY - panY;
+    document.getElementById("popup-expense-img").style.cursor = 'grabbing';
 }
 
 function drag(event) {
-    if (isDragging && zoomLevel > 1) {
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-        panX += dx;
-        panY += dy;
-        startX = event.clientX;
-        startY = event.clientY;
-        const img = document.getElementById("popup-expense-img");
-        img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-    }
+    if (!isDragging) return;
+    event.preventDefault();
+    panX = event.clientX - startX;
+    panY = event.clientY - startY;
+    const img = document.getElementById("popup-expense-img");
+    img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
 function stopDragging() {
     isDragging = false;
-    const img = document.getElementById("popup-expense-img");
-    img.style.cursor = zoomLevel > 1 ? 'grab' : 'auto';
+    document.getElementById("popup-expense-img").style.cursor = 'grab';
 }
 
-function downloadImage() {
+async function downloadImage() {
     const img = document.getElementById("popup-expense-img");
-    if (img.src) {
+    if (!img.src) {
+        showToast("No image available to download");
+        return;
+    }
+
+    try {
+        let url;
+        if (currentExpenseImages.length > 0) {
+            const liquidation = liquidations[selectedLiquidationIndex];
+            url = `${SERVER_URL}/api/liquidation/${liquidation.liquidationId}/images?index=${currentImageIndex}`;
+        } else {
+            const expenseId = expenses.find(exp => exp.imagePaths?.includes(img.src.split('/').pop()))?.expenseId;
+            url = `${SERVER_URL}/api/expenses/${expenseId}/images?index=0`;
+        }
+
+        const response = await fetch(url, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error("Failed to fetch image");
+
+        const blob = await response.blob();
         const link = document.createElement('a');
-        link.href = img.src;
+        link.href = URL.createObjectURL(blob);
         link.download = `expense-image-${Date.now()}.jpg`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        showToast("Image downloaded successfully");
+    } catch (error) {
+        showToast("Failed to download image: " + error.message);
     }
 }
 
@@ -1143,56 +1194,49 @@ function updateLiquidationTable() {
 
     let filteredLiquidations = liquidations;
     if (searchValue) {
-        filteredLiquidations = liquidations.filter(liq =>
-            (liq.username?.toLowerCase().includes(searchValue) || '') ||
-            (liq.budgetName?.toLowerCase().includes(searchValue) || '') ||
-            (liq.amount?.toString().includes(searchValue) || '') ||
-            (liq.totalSpent?.toString().includes(searchValue) || '') ||
-            (liq.remainingBalance?.toString().includes(searchValue) || '') ||
-            (liq.status?.toLowerCase().includes(searchValue) || '') ||
-            (liq.remarks?.toLowerCase().includes(searchValue) || '')
+        filteredLiquidations = liquidations.filter(l =>
+            (l.username?.toLowerCase().includes(searchValue) || '') ||
+            (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
+            (l.amount?.toString().includes(searchValue) || '') ||
+            (l.totalSpent?.toString().includes(searchValue) || '') ||
+            (l.remainingBalance?.toString().includes(searchValue) || '') ||
+            (l.status?.toLowerCase().includes(searchValue) || '') ||
+            (l.remarks?.toLowerCase().includes(searchValue) || '')
         );
     }
 
     if (sortValue === "amount") {
         const sortedLiquidations = [...filteredLiquidations].sort((a, b) => (b.amount || 0) - (a.amount || 0));
-        sortedLiquidations.forEach((liq, index) => {
+        sortedLiquidations.forEach((l, index) => {
             const row = document.createElement("tr");
-            const statusClass = liq.status === "PENDING" ? "badge-pending" :
-                              liq.status === "LIQUIDATED" ? "badge-liquidated" :
+            const statusClass = l.status === "PENDING" ? "badge-pending" :
+                              l.status === "LIQUIDATED" ? "badge-liquidated" :
                               "badge-denied";
-            const originalIndex = liquidations.findIndex(l => l.liquidationId === liq.liquidationId);
             row.innerHTML = `
-                <td>${liq.username || 'Unknown'}</td>
-                <td>${liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString() : 'N/A'}</td>
-                <td>${liq.budgetName || 'No Name'}</td>
-                <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><span class="status-badge ${statusClass}">${liq.status || 'PENDING'}</span></td>
-                <td>${liq.remarks || ''}</td>
-                <td><button onclick="showLiquidationDetails(${originalIndex})">View</button></td>
+                <td>${l.username}</td>
+                <td>${new Date(l.dateOfTransaction).toLocaleDateString()}</td>
+                <td>${l.budgetName}</td>
+                <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td><span class="status-badge ${statusClass}">${l.status}</span></td>
+                <td>${l.remarks || ''}</td>
+                <td><button onclick="showLiquidationDetails(${liquidations.findIndex(li => li.liquidationId === l.liquidationId)})">View</button></td>
             `;
             tbody.appendChild(row);
         });
     } else {
         const groupLiquidations = (liquidations, key) => {
             const groups = {};
-            liquidations.forEach(liq => {
+            liquidations.forEach(l => {
                 let groupKey;
                 switch (key) {
-                    case "username":
-                        groupKey = liq.username || 'Unknown';
-                        break;
-                    case "date":
-                        groupKey = liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date';
-                        break;
-                    case "status":
-                        groupKey = liq.status || 'PENDING';
-                        break;
+                    case "username": groupKey = l.username || 'Unknown'; break;
+                    case "date": groupKey = l.dateOfTransaction ? new Date(l.dateOfTransaction).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No Date'; break;
+                    case "status": groupKey = l.status || 'PENDING'; break;
                 }
                 if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(liq);
+                groups[groupKey].push(l);
             });
             return groups;
         };
@@ -1204,22 +1248,21 @@ function updateLiquidationTable() {
             headerRow.innerHTML = `<td colspan="9" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
             tbody.appendChild(headerRow);
 
-            groupedLiquidations[groupKey].forEach(liq => {
+            groupedLiquidations[groupKey].forEach(l => {
                 const row = document.createElement("tr");
-                const statusClass = liq.status === "PENDING" ? "badge-pending" :
-                                  liq.status === "LIQUIDATED" ? "badge-liquidated" :
+                const statusClass = l.status === "PENDING" ? "badge-pending" :
+                                  l.status === "LIQUIDATED" ? "badge-liquidated" :
                                   "badge-denied";
-                const originalIndex = liquidations.findIndex(l => l.liquidationId === liq.liquidationId);
                 row.innerHTML = `
-                    <td>${liq.username || 'Unknown'}</td>
-                    <td>${liq.dateOfTransaction ? new Date(liq.dateOfTransaction).toLocaleDateString() : 'N/A'}</td>
-                    <td>${liq.budgetName || 'No Name'}</td>
-                    <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td><span class="status-badge ${statusClass}">${liq.status || 'PENDING'}</span></td>
-                    <td>${liq.remarks || ''}</td>
-                    <td><button onclick="showLiquidationDetails(${originalIndex})">View</button></td>
+                    <td>${l.username}</td>
+                    <td>${new Date(l.dateOfTransaction).toLocaleDateString()}</td>
+                    <td>${l.budgetName}</td>
+                    <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td><span class="status-badge ${statusClass}">${l.status}</span></td>
+                    <td>${l.remarks || ''}</td>
+                    <td><button onclick="showLiquidationDetails(${liquidations.findIndex(li => li.liquidationId === l.liquidationId)})">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1252,10 +1295,10 @@ function showLiquidationDetails(index) {
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${liquidation.dateOfTransaction ? new Date(liquidation.dateOfTransaction).toLocaleDateString() : 'N/A'}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${new Date(liquidation.dateOfTransaction).toLocaleDateString()}</span>
         </div>
         <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
+            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
         </div>
         <div>
             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1284,13 +1327,13 @@ function showLiquidationDetails(index) {
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction || 'N/A'}</span>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${exp.dateOfTransaction ? new Date(exp.dateOfTransaction).toLocaleDateString() : 'N/A'}</span>
                         </div>
                         <div>
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> 
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span>
                             <button onclick="showExpenseImage(${exp.expenseId}, ${liquidation.liquidationId}, 0)">View</button>
                         </div>
                     </li>
@@ -1300,7 +1343,7 @@ function showLiquidationDetails(index) {
     `;
 
     actionsDiv.innerHTML = isPending ? `
-        <button onclick="approveLiquidation()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Approve</button>
+        <button onclick="liquidateBudget()" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Liquidate</button>
         <button onclick="denyLiquidation()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Deny</button>
     ` : ``;
 
@@ -1312,7 +1355,7 @@ function closeLiquidationPopup() {
     selectedLiquidationIndex = null;
 }
 
-async function approveLiquidation() {
+async function liquidateBudget() {
     if (selectedLiquidationIndex === null) return;
     await updateLiquidationStatus("LIQUIDATED");
 }
@@ -1338,6 +1381,7 @@ async function updateLiquidationStatus(status) {
             liquidations[selectedLiquidationIndex].status = status;
             updateLiquidationTable();
             closeLiquidationPopup();
+            updateDashboard(); // Update dashboard to reflect new liquidation status
             showToast(`Liquidation ${status.toLowerCase()} successfully`);
         } else {
             showToast(data.error || "Status update failed");
