@@ -1,5 +1,6 @@
 const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
                                             // Change to "http://localhost:8080" for local testing
+
 let users = [];
 let expenses = [];
 let budgetRequests = [];
@@ -15,7 +16,7 @@ let zoomLevel = 1;
 let panX = 0, panY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
-let categoryChart, userChart, monthlySpendingChart, budgetStatusChart;
+let categoryChart, userChart, monthlySpendingChart;
 let currentUser = null;
 let currentUserId = null;
 let pendingBudgetAction = null;
@@ -73,7 +74,6 @@ function logout() {
     if (categoryChart) categoryChart.destroy();
     if (userChart) userChart.destroy();
     if (monthlySpendingChart) monthlySpendingChart.destroy();
-    if (budgetStatusChart) budgetStatusChart.destroy();
     document.getElementById("admin-profile-picture").src = "images/default-profile.png";
 }
 
@@ -241,22 +241,10 @@ async function updateDashboard() {
     if (!token) return;
 
     try {
-        // USERS
-        const usersRes = await fetch(`${SERVER_URL}/api/admin/users`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const usersData = await usersRes.json();
-        if (usersRes.ok) users = usersData;
-
-        // EXPENSES
-        const expensesRes = await fetch(`${SERVER_URL}/api/expenses/all`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const expensesData = await expensesRes.json();
-        if (expensesRes.ok) expenses = expensesData;
-
         // BUDGET REQUESTS
-        const budgetRes = await fetch(`${SERVER_URL}/api/budgets`, {
+        const sortBudget = document.getElementById("sortBudget")?.value || "date-asc";
+        const [budgetSortBy, budgetSortOrder] = sortBudget.split('-');
+        const budgetRes = await fetch(`${SERVER_URL}/api/budgets?sortBy=${budgetSortBy}&sortOrder=${budgetSortOrder}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const budgetData = await budgetRes.json();
@@ -273,8 +261,19 @@ async function updateDashboard() {
             }));
         }
 
+        // EXPENSES
+        const sortExpense = document.getElementById("sortExpense")?.value || "date-asc";
+        const [expenseSortBy, expenseSortOrder] = sortExpense.split('-');
+        const expensesRes = await fetch(`${SERVER_URL}/api/expenses/all?sortBy=${expenseSortBy}&sortOrder=${expenseSortOrder}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const expensesData = await expensesRes.json();
+        if (expensesRes.ok) expenses = expensesData;
+
         // LIQUIDATIONS
-        const liquidationsRes = await fetch(`${SERVER_URL}/api/liquidation`, {
+        const sortLiquidation = document.getElementById("sortLiquidation")?.value || "date-asc";
+        const [liquidationSortBy, liquidationSortOrder] = sortLiquidation.split('-');
+        const liquidationsRes = await fetch(`${SERVER_URL}/api/liquidation?sortBy=${liquidationSortBy}&sortOrder=${liquidationSortOrder}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const liquidationsData = await liquidationsRes.json();
@@ -292,6 +291,13 @@ async function updateDashboard() {
                 expenses: l.expenses || []
             }));
         }
+
+        // USERS
+        const usersRes = await fetch(`${SERVER_URL}/api/admin/users`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const usersData = await usersRes.json();
+        if (usersRes.ok) users = usersData;
 
         // UPDATE UI
         const balanceCards = document.querySelectorAll(".balance-card h1");
@@ -424,37 +430,6 @@ function updateCharts() {
                 x: { title: { display: true, text: "Month" } }
             },
             plugins: { legend: { display: false } }
-        }
-    });
-
-    // Budget Status Distribution Chart
-    const statusCounts = budgetRequests.reduce((acc, req) => {
-        const status = req.status || "PENDING";
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {});
-    const statusLabels = ["PENDING", "RELEASED", "DENIED"];
-    const statusData = statusLabels.map(status => statusCounts[status] || 0);
-    const statusColors = ["#f0ad4e", "#5cb85c", "#d9534f"];
-
-    if (budgetStatusChart) budgetStatusChart.destroy();
-    budgetStatusChart = new Chart(document.getElementById("budgetStatusChart"), {
-        type: "pie",
-        data: {
-            labels: statusLabels,
-            datasets: [{
-                data: statusData,
-                backgroundColor: statusColors,
-                borderColor: "#fff",
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
         }
     });
 }
@@ -724,73 +699,44 @@ function formatDate(dateString) {
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 }
 
-function updateBudgetTable() {
+async function updateBudgetTable() {
     const tbody = document.getElementById("budget-table");
     tbody.innerHTML = "";
 
-    const sortValue = document.getElementById("sortBudget")?.value || "date";
     const searchValue = document.getElementById("searchBudget")?.value.toLowerCase() || "";
+    const sortBudget = document.getElementById("sortBudget")?.value || "date-asc";
+    const [sortBy, sortOrder] = sortBudget.split('-');
 
-    let filteredBudgets = budgetRequests;
-    if (searchValue) {
-        filteredBudgets = budgetRequests.filter(req =>
-            (req.username?.toLowerCase().includes(searchValue) || '') ||
-            (req.name?.toLowerCase().includes(searchValue) || '') ||
-            (req.amount?.toString().includes(searchValue) || '') ||
-            (formatDate(req.date).toLowerCase().includes(searchValue) || '') ||
-            (req.status?.toLowerCase().includes(searchValue) || '') ||
-            (req.remarks?.toLowerCase().includes(searchValue) || '')
-        );
-    }
-
-    if (sortValue === "amount") {
-        const sortedBudgets = [...filteredBudgets].sort((a, b) => (b.amount || 0) - (a.amount || 0));
-        sortedBudgets.forEach((req, index) => {
-            const row = document.createElement("tr");
-            const statusClass = req.status === "PENDING" ? "badge-pending" :
-                              req.status === "RELEASED" ? "badge-released" :
-                              "badge-denied";
-            row.innerHTML = `
-                <td>${formatDate(req.date)}</td>
-                <td>${req.username}</td>
-                <td>${req.name}</td>
-                <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><span class="status-badge ${statusClass}">${req.status}</span></td>
-                <td>${req.remarks || ''}</td>
-                <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
-            `;
-            tbody.appendChild(row);
+    try {
+        const budgetRes = await fetch(`${SERVER_URL}/api/budgets?sortBy=${sortBy}&sortOrder=${sortOrder}`, {
+            headers: { Authorization: `Bearer ${token}` }
         });
-    } else {
-        const groupBudgets = (budgets, key) => {
-            const groups = {};
-            budgets.forEach(req => {
-                let groupKey;
-                switch (key) {
-                    case "date": groupKey = req.date ? formatDate(req.date).slice(0, 7) : 'No Date'; break; // Group by YYYY-MM
-                    case "username": groupKey = req.username || 'Unknown'; break;
-                    case "name": groupKey = req.name || 'No Name'; break;
-                    case "status": groupKey = req.status || 'PENDING'; break;
-                }
-                if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(req);
-            });
-            return groups;
-        };
+        const budgetData = await budgetRes.json();
+        if (budgetRes.ok) {
+            budgetRequests = budgetData.map(b => ({
+                budgetId: b.budgetId,
+                username: b.username || "Unknown",
+                name: b.name || "No Name",
+                amount: b.total || 0,
+                date: b.date || new Date().toISOString(),
+                status: b.status || "PENDING",
+                remarks: b.remarks || "",
+                expenses: b.expenses || []
+            }));
 
-        const groupedBudgets = groupBudgets(filteredBudgets, sortValue);
-
-        Object.keys(groupedBudgets).sort((a, b) => {
-            if (sortValue === "date") {
-                return a.localeCompare(b); // Sort by YYYY-MM
+            let filteredBudgets = budgetRequests;
+            if (searchValue) {
+                filteredBudgets = budgetRequests.filter(req =>
+                    (req.username?.toLowerCase().includes(searchValue) || '') ||
+                    (req.name?.toLowerCase().includes(searchValue) || '') ||
+                    (req.amount?.toString().includes(searchValue) || '') ||
+                    (formatDate(req.date).toLowerCase().includes(searchValue) || '') ||
+                    (req.status?.toLowerCase().includes(searchValue) || '') ||
+                    (req.remarks?.toLowerCase().includes(searchValue) || '')
+                );
             }
-            return a.localeCompare(b);
-        }).forEach((groupKey, index) => {
-            const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="7" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
-            tbody.appendChild(headerRow);
 
-            groupedBudgets[groupKey].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(req => {
+            filteredBudgets.forEach((req, index) => {
                 const row = document.createElement("tr");
                 const statusClass = req.status === "PENDING" ? "badge-pending" :
                                   req.status === "RELEASED" ? "badge-released" :
@@ -802,20 +748,18 @@ function updateBudgetTable() {
                     <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td><span class="status-badge ${statusClass}">${req.status}</span></td>
                     <td>${req.remarks || ''}</td>
-                    <td><button onclick="showBudgetDetails(${budgetRequests.findIndex(b => b.budgetId === req.budgetId)})">View</button></td>
+                    <td><button onclick="showBudgetDetails(${index})">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
 
-            if (index < Object.keys(groupedBudgets).length - 1) {
-                const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="7" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
-                tbody.appendChild(separatorRow);
-            }
-        });
+            document.getElementById("no-budgets-message").style.display = filteredBudgets.length === 0 ? "block" : "none";
+        } else {
+            showToast("Failed to fetch budgets: " + budgetData.error);
+        }
+    } catch (error) {
+        showToast("Error fetching budgets: " + error.message);
     }
-
-    document.getElementById("no-budgets-message").style.display = filteredBudgets.length === 0 ? "block" : "none";
 }
 
 function filterBudgets() {
@@ -951,68 +895,33 @@ function closeBudgetPopup() {
 }
 
 // =================== EXPENSE FUNCTIONS ===================
-function updateExpenseTable() {
+async function updateExpenseTable() {
     const tbody = document.getElementById("expenses-table");
     tbody.innerHTML = "";
 
-    const sortedExpenses = getSortedExpenses();
-    const sortValue = document.getElementById("sortExpense")?.value || "date";
     const searchValue = document.getElementById("searchExpense")?.value.toLowerCase() || "";
+    const sortExpense = document.getElementById("sortExpense")?.value || "date-asc";
+    const [sortBy, sortOrder] = sortExpense.split('-');
 
-    let filteredExpenses = sortedExpenses;
-    if (searchValue) {
-        filteredExpenses = sortedExpenses.filter(exp =>
-            (exp.username?.toLowerCase().includes(searchValue) || '') ||
-            (exp.category?.toLowerCase().includes(searchValue) || '') ||
-            (exp.amount?.toString().includes(searchValue) || '') ||
-            (exp.dateOfTransaction ? formatDate(exp.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
-            (exp.remarks?.toLowerCase().includes(searchValue) || '')
-        );
-    }
-
-    if (sortValue === "amount") {
-        filteredExpenses.forEach(exp => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : ''}</td>
-                <td>${exp.username || 'Unknown'}</td>
-                <td>${exp.category || ''}</td>
-                <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${exp.remarks || ''}</td>
-                <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
-            `;
-            tbody.appendChild(row);
+    try {
+        const expensesRes = await fetch(`${SERVER_URL}/api/expenses/all?sortBy=${sortBy}&sortOrder=${sortOrder}`, {
+            headers: { Authorization: `Bearer ${token}` }
         });
-    } else {
-        const groupExpenses = (expenses, key) => {
-            const groups = {};
-            expenses.forEach(exp => {
-                let groupKey;
-                switch (key) {
-                    case "date":
-                        groupKey = exp.dateOfTransaction ? formatDate(exp.dateOfTransaction).slice(0, 7) : 'No Date';
-                        break;
-                    case "user":
-                        groupKey = exp.username || 'Unknown';
-                        break;
-                    case "category":
-                        groupKey = exp.category || 'Uncategorized';
-                        break;
-                }
-                if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(exp);
-            });
-            return groups;
-        };
+        const expensesData = await expensesRes.json();
+        if (expensesRes.ok) {
+            expenses = expensesData;
+            let filteredExpenses = expenses;
+            if (searchValue) {
+                filteredExpenses = expenses.filter(exp =>
+                    (exp.username?.toLowerCase().includes(searchValue) || '') ||
+                    (exp.category?.toLowerCase().includes(searchValue) || '') ||
+                    (exp.amount?.toString().includes(searchValue) || '') ||
+                    (exp.dateOfTransaction ? formatDate(exp.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
+                    (exp.remarks?.toLowerCase().includes(searchValue) || '')
+                );
+            }
 
-        const groupedExpenses = groupExpenses(filteredExpenses, sortValue);
-
-        Object.keys(groupedExpenses).sort().forEach((groupKey, index) => {
-            const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="6" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
-            tbody.appendChild(headerRow);
-
-            groupedExpenses[groupKey].forEach(exp => {
+            filteredExpenses.forEach(exp => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : ''}</td>
@@ -1020,42 +929,28 @@ function updateExpenseTable() {
                     <td>${exp.category || ''}</td>
                     <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>${exp.remarks || ''}</td>
-                    <td><button onclick="showExpenseImage(${exp.expenseId}, null, null)">View</button></td>
+                    <td><button onclick="showExpenseImage(${exp.expenseId}, null, 0)">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
 
-            if (index < Object.keys(groupedExpenses).length - 1) {
-                const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="6" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
-                tbody.appendChild(separatorRow);
-            }
-        });
+            document.getElementById("no-expenses-message").style.display = filteredExpenses.length === 0 ? "block" : "none";
+        } else {
+            showToast("Failed to fetch expenses: " + expensesData.error);
+        }
+    } catch (error) {
+        showToast("Error fetching expenses: " + error.message);
     }
-
-    document.getElementById("no-expenses-message").style.display = filteredExpenses.length === 0 ? "block" : "none";
 }
 
 function filterExpenses() {
     updateExpenseTable();
 }
 
-function getSortedExpenses() {
-    const sortValue = document.getElementById("sortExpense")?.value || "date";
-    return [...expenses].sort((a, b) => {
-        switch (sortValue) {
-            case "amount":
-                return (b.amount || 0) - (a.amount || 0);
-            case "category":
-                return (a.category || '').localeCompare(b.category || '');
-            case "user":
-                return (a.username || '').localeCompare(b.username || '');
-            default:
-                return new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction);
-        }
-    });
-}
+// Remove getSortedExpenses since sorting is now handled by the backend
+// function getSortedExpenses() { ... }
 
+// =================== EXPENSE IMAGE HANDLING ===================
 function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     const popup = document.getElementById("expenseImagePopup");
     const img = document.getElementById("popup-expense-img");
@@ -1066,7 +961,6 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     img.style.width = 'auto';
     img.style.height = 'auto';
 
-    // Update popup to include navigation buttons
     const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
     imageControls.innerHTML = `
         <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
@@ -1093,7 +987,7 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
         currentImageIndex = imageIndex;
 
         if (currentExpenseImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < currentExpenseImages.length) {
-            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images?index=${currentImageIndex}`, {
+            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images/${expenseId}/${currentImageIndex}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             })
             .then(response => {
@@ -1222,75 +1116,46 @@ async function downloadImage() {
 }
 
 // =================== LIQUIDATION FUNCTIONS ===================
-function updateLiquidationTable() {
+async function updateLiquidationTable() {
     const tbody = document.getElementById("liquidation-table");
     tbody.innerHTML = "";
 
-    const sortValue = document.getElementById("sortLiquidation")?.value || "date";
     const searchValue = document.getElementById("searchLiquidation")?.value.toLowerCase() || "";
+    const sortLiquidation = document.getElementById("sortLiquidation")?.value || "date-asc";
+    const [sortBy, sortOrder] = sortLiquidation.split('-');
 
-    let filteredLiquidations = liquidations;
-    if (searchValue) {
-        filteredLiquidations = liquidations.filter(l =>
-            (l.username?.toLowerCase().includes(searchValue) || '') ||
-            (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
-            (l.amount?.toString().includes(searchValue) || '') ||
-            (l.dateOfTransaction ? formatDate(l.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
-            (l.status?.toLowerCase().includes(searchValue) || '') ||
-            (l.remarks?.toLowerCase().includes(searchValue) || '')
-        );
-    }
-
-    if (sortValue === "amount") {
-        const sortedLiquidations = [...filteredLiquidations].sort((a, b) => (b.amount || 0) - (a.amount || 0));
-        sortedLiquidations.forEach((liq, index) => {
-            const row = document.createElement("tr");
-            const statusClass = liq.status === "PENDING" ? "badge-pending" :
-                              liq.status === "LIQUIDATED" ? "badge-liquidated" :
-                              "badge-denied";
-            row.innerHTML = `
-                <td>${liq.dateOfTransaction ? formatDate(liq.dateOfTransaction) : ''}</td>
-                <td>${liq.username || 'Unknown'}</td>
-                <td>${liq.budgetName || 'No Name'}</td>
-                <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><span class="status-badge ${statusClass}">${liq.status}</span></td>
-                <td>${liq.remarks || ''}</td>
-                <td><button onclick="showLiquidationDetails(${liquidations.findIndex(l => l.liquidationId === liq.liquidationId)})">View</button></td>
-            `;
-            tbody.appendChild(row);
+    try {
+        const liquidationsRes = await fetch(`${SERVER_URL}/api/liquidation?sortBy=${sortBy}&sortOrder=${sortOrder}`, {
+            headers: { Authorization: `Bearer ${token}` }
         });
-    } else {
-        const groupLiquidations = (liquidations, key) => {
-            const groups = {};
-            liquidations.forEach(liq => {
-                let groupKey;
-                switch (key) {
-                    case "date":
-                        groupKey = liq.dateOfTransaction ? formatDate(liq.dateOfTransaction).slice(0, 7) : 'No Date';
-                        break;
-                    case "username":
-                        groupKey = liq.username || 'Unknown';
-                        break;
-                    case "status":
-                        groupKey = liq.status || 'PENDING';
-                        break;
-                }
-                if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(liq);
-            });
-            return groups;
-        };
+        const liquidationsData = await liquidationsRes.json();
+        if (liquidationsRes.ok) {
+            liquidations = (liquidationsData.budgets || []).map(l => ({
+                liquidationId: l.liquidationId,
+                username: l.username || "Unknown",
+                dateOfTransaction: l.dateOfTransaction || new Date().toISOString(),
+                budgetName: l.budgetName || "No Name",
+                amount: l.amount || 0,
+                totalSpent: l.totalSpent || 0,
+                remainingBalance: l.remainingBalance || 0,
+                status: l.status || "PENDING",
+                remarks: l.remarks || "",
+                expenses: l.expenses || []
+            }));
 
-        const groupedLiquidations = groupLiquidations(filteredLiquidations, sortValue);
+            let filteredLiquidations = liquidations;
+            if (searchValue) {
+                filteredLiquidations = liquidations.filter(l =>
+                    (l.username?.toLowerCase().includes(searchValue) || '') ||
+                    (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
+                    (l.amount?.toString().includes(searchValue) || '') ||
+                    (l.dateOfTransaction ? formatDate(l.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
+                    (l.status?.toLowerCase().includes(searchValue) || '') ||
+                    (l.remarks?.toLowerCase().includes(searchValue) || '')
+                );
+            }
 
-        Object.keys(groupedLiquidations).sort().forEach((groupKey, index) => {
-            const headerRow = document.createElement("tr");
-            headerRow.innerHTML = `<td colspan="9" style="background: linear-gradient(135deg, #fff5f5, #f5f5f5); font-weight: bold; padding: 0.5rem; border-top: 1px solid #ffb3b3;">${groupKey}</td>`;
-            tbody.appendChild(headerRow);
-
-            groupedLiquidations[groupKey].sort((a, b) => new Date(b.dateOfTransaction) - new Date(a.dateOfTransaction)).forEach(liq => {
+            filteredLiquidations.forEach((liq, index) => {
                 const row = document.createElement("tr");
                 const statusClass = liq.status === "PENDING" ? "badge-pending" :
                                   liq.status === "LIQUIDATED" ? "badge-liquidated" :
@@ -1304,20 +1169,18 @@ function updateLiquidationTable() {
                     <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td><span class="status-badge ${statusClass}">${liq.status}</span></td>
                     <td>${liq.remarks || ''}</td>
-                    <td><button onclick="showLiquidationDetails(${liquidations.findIndex(l => l.liquidationId === liq.liquidationId)})">View</button></td>
+                    <td><button onclick="showLiquidationDetails(${index})">View</button></td>
                 `;
                 tbody.appendChild(row);
             });
 
-            if (index < Object.keys(groupedLiquidations).length - 1) {
-                const separatorRow = document.createElement("tr");
-                separatorRow.innerHTML = `<td colspan="9" style="height: 0.5rem; background: linear-gradient(to right, #ffb3b3, #f5f5f5); border-bottom: 1px solid #ffb3b3;"></td>`;
-                tbody.appendChild(separatorRow);
-            }
-        });
+            document.getElementById("no-liquidations-message").style.display = filteredLiquidations.length === 0 ? "block" : "none";
+        } else {
+            showToast("Failed to fetch liquidations: " + liquidationsData.error);
+        }
+    } catch (error) {
+        showToast("Error fetching liquidations: " + error.message);
     }
-
-    document.getElementById("no-liquidations-message").style.display = filteredLiquidations.length === 0 ? "block" : "none";
 }
 
 function filterLiquidations() {

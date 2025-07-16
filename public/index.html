@@ -183,10 +183,6 @@
                     <h4>Monthly Spending Trend</h4>
                     <canvas id="monthlySpendingChart" style="max-height: 250px;"></canvas>
                 </div>
-                <div class="chart-card">
-                    <h4>Budget Status Distribution</h4>
-                    <canvas id="budgetStatusChart" style="max-height: 250px;"></canvas>
-                </div>
             </div>
         </div>
 
@@ -214,11 +210,16 @@
                 <h3>Budget Requests</h3>
                 <div class="table-actions">
                     <select id="sortBudget" onchange="updateBudgetTable()">
-                        <option value="date">Sort by Budget Date</option>
-                        <option value="username">Sort by Username</option>
-                        <option value="name">Sort by Request</option>
-                        <option value="amount">Sort by Amount (High to Low)</option>
-                        <option value="status">Sort by Status</option>
+                        <option value="date-asc">Sort by Date (Asc)</option>
+                        <option value="date-desc">Sort by Date (Desc)</option>
+                        <option value="username-asc">Sort by Username (Asc)</option>
+                        <option value="username-desc">Sort by Username (Desc)</option>
+                        <option value="name-asc">Sort by Request Name (Asc)</option>
+                        <option value="name-desc">Sort by Request Name (Desc)</option>
+                        <option value="amount-desc">Sort by Amount (High to Low)</option>
+                        <option value="amount-asc">Sort by Amount (Low to High)</option>
+                        <option value="status-asc">Sort by Status (Asc)</option>
+                        <option value="status-desc">Sort by Status (Desc)</option>
                     </select>
                 </div>
             </div>
@@ -268,10 +269,14 @@
                     <h3>Expenses</h3>
                     <div class="table-actions">
                         <select id="sortExpense" onchange="updateExpenseTable()">
-                            <option value="date">Sort by Date</option>
-                            <option value="amount">Sort by Amount (High to Low)</option>
-                            <option value="category">Sort by Category</option>
-                            <option value="user">Sort by User</option>
+                            <option value="date-asc">Sort by Date (Asc)</option>
+                            <option value="date-desc">Sort by Date (Desc)</option>
+                            <option value="amount-desc">Sort by Amount (High to Low)</option>
+                            <option value="amount-asc">Sort by Amount (Low to High)</option>
+                            <option value="category-asc">Sort by Category (Asc)</option>
+                            <option value="category-desc">Sort by Category (Desc)</option>
+                            <option value="user-asc">Sort by Username (Asc)</option>
+                            <option value="user-desc">Sort by Username (Desc)</option>
                         </select>
                     </div>
                 </div>
@@ -322,10 +327,14 @@
                     <h3>Liquidations</h3>
                     <div class="table-actions">
                         <select id="sortLiquidation" onchange="updateLiquidationTable()">
-                            <option value="username">Sort by Username</option>
-                            <option value="date">Sort by Date</option>
-                            <option value="amount">Sort by Amount (High to Low)</option>
-                            <option value="status">Sort by Status</option>
+                            <option value="date-asc">Sort by Date (Asc)</option>
+                            <option value="date-desc">Sort by Date (Desc)</option>
+                            <option value="username-asc">Sort by Username (Asc)</option>
+                            <option value="username-desc">Sort by Username (Desc)</option>
+                            <option value="amount-desc">Sort by Amount (High to Low)</option>
+                            <option value="amount-asc">Sort by Amount (Low to High)</option>
+                            <option value="status-asc">Sort by Status (Asc)</option>
+                            <option value="status-desc">Sort by Status (Desc)</option>
                         </select>
                     </div>
                 </div>

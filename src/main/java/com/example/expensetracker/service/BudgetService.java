@@ -9,6 +9,7 @@ import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.exception.UnauthorizedAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -65,19 +66,45 @@ public class BudgetService {
         return budgetRepository.save(budget);
     }
 
-    public List<SubmittedBudget> getAllBudgets() {
+    public List<SubmittedBudget> getAllBudgets(String sortBy, String sortOrder) {
         User user = userRepository.findByUsername(getCurrentUsername());
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-        if (isAdmin) {
-            return budgetRepository.findAll();
+
+        // Map frontend sort values to database field names
+        String sortField;
+        switch (sortBy.toLowerCase()) {
+            case "date":
+                sortField = "budgetDate";
+                break;
+            case "username":
+                sortField = "user.username";
+                break;
+            case "name":
+                sortField = "name";
+                break;
+            case "amount":
+                sortField = "total";
+                break;
+            case "status":
+                sortField = "status";
+                break;
+            default:
+                sortField = "budgetDate"; // Default sort
         }
-        return budgetRepository.findAll().stream()
-                .filter(budget -> budget.getUser().getUserId().equals(user.getUserId()))
-                .toList();
+
+        Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
+        List<SubmittedBudget> budgets = budgetRepository.findAll(sort);
+
+        if (!isAdmin) {
+            budgets = budgets.stream()
+                    .filter(budget -> budget.getUser().getUserId().equals(user.getUserId()))
+                    .toList();
+        }
+        return budgets;
     }
 
     public ResponseEntity<SubmittedBudget> getBudgetById(Long budgetId) {

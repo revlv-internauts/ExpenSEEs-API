@@ -7,6 +7,7 @@ import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.exception.UnauthorizedAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -52,14 +53,52 @@ public class ExpenseService {
         return expenseRepository.save(expense);
     }
 
-    public List<Expense> getAllExpenses() {
+    public List<Expense> getAllExpenses(String sortBy, String sortOrder) {
         User user = userRepository.findByUsername(getCurrentUsername());
-        return expenseRepository.findAllByUser(user);
+        String sortField;
+        switch (sortBy.toLowerCase()) {
+            case "date":
+                sortField = "dateOfTransaction";
+                break;
+            case "amount":
+                sortField = "amount";
+                break;
+            case "category":
+                sortField = "category";
+                break;
+            case "user":
+                sortField = "user.username";
+                break;
+            default:
+                sortField = "dateOfTransaction"; // Default sort
+        }
+
+        Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
+        return expenseRepository.findAllByUser(user, sort);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    public List<Expense> getAllExpensesForAdmin() {
-        return expenseRepository.findAll();
+    public List<Expense> getAllExpensesForAdmin(String sortBy, String sortOrder) {
+        String sortField;
+        switch (sortBy.toLowerCase()) {
+            case "date":
+                sortField = "dateOfTransaction";
+                break;
+            case "amount":
+                sortField = "amount";
+                break;
+            case "category":
+                sortField = "category";
+                break;
+            case "user":
+                sortField = "user.username";
+                break;
+            default:
+                sortField = "dateOfTransaction"; // Default sort
+        }
+
+        Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
+        return expenseRepository.findAll(sort);
     }
 
     public double getTotalExpenseAmount() {

@@ -171,14 +171,18 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Expense>> getAllExpenses() {
-        return ResponseEntity.ok(expenseService.getAllExpenses());
+    public ResponseEntity<List<Expense>> getAllExpenses(
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder) {
+        return ResponseEntity.ok(expenseService.getAllExpenses(sortBy, sortOrder));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/all")
-    public ResponseEntity<List<Expense>> getAllExpensesForAdmin() {
-        return ResponseEntity.ok(expenseService.getAllExpensesForAdmin());
+    public ResponseEntity<List<Expense>> getAllExpensesForAdmin(
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder) {
+        return ResponseEntity.ok(expenseService.getAllExpensesForAdmin(sortBy, sortOrder));
     }
 
     @DeleteMapping("/{expenseId}")
@@ -221,7 +225,7 @@ public class ExpenseController {
 
     @GetMapping("/top")
     public ResponseEntity<List<Expense>> getTopExpenses() {
-        List<Expense> expenses = expenseService.getAllExpenses();
+        List<Expense> expenses = expenseService.getAllExpenses("amount", "desc"); // Pass sortBy and sortOrder
         List<Expense> topExpenses = expenses.stream()
                 .sorted(Comparator.comparing(Expense::getAmount).reversed())
                 .limit(5)

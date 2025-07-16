@@ -148,10 +148,11 @@ public class LiquidationReportController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getLiquidationReport() {
+    public ResponseEntity<?> getLiquidationReport(
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder) {
         try {
-            List<Liquidation> liquidations = liquidationService.getAllLiquidations();
-            // Map liquidations to include budgetName and amount
+            List<Liquidation> liquidations = liquidationService.getAllLiquidations(sortBy, sortOrder);
             List<Map<String, Object>> responseList = liquidations.stream().map(liquidation -> {
                 Map<String, Object> liquidationMap = new HashMap<>();
                 SubmittedBudget budget = liquidation.getSubmittedBudget();
@@ -175,35 +176,6 @@ public class LiquidationReportController {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Failed to retrieve liquidations: " + e.getMessage());
             return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/{liquidationId}")
-    public ResponseEntity<?> getLiquidationById(@PathVariable Long liquidationId) {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            Liquidation liquidation = liquidationService.getLiquidationById(liquidationId);
-            if (liquidation == null) {
-                response.put("error", "Liquidation not found with ID: " + liquidationId);
-                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-            }
-            // Map liquidation to include budgetName and amount
-            SubmittedBudget budget = liquidation.getSubmittedBudget();
-            response.put("liquidationId", liquidation.getLiquidationId());
-            response.put("budgetName", budget != null ? budget.getName() : "Unknown");
-            response.put("amount", budget != null ? budget.getTotal() : 0.0);
-            response.put("totalSpent", liquidation.getTotalSpent());
-            response.put("remainingBalance", liquidation.getRemainingBalance());
-            response.put("status", liquidation.getStatus().toString());
-            response.put("remarks", liquidation.getRemarks());
-            response.put("dateOfTransaction", liquidation.getDateOfTransaction());
-            response.put("createdAt", liquidation.getCreatedAt());
-            response.put("expenses", liquidation.getExpenses());
-            response.put("username", liquidation.getUsername());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("error", "Failed to retrieve liquidation: " + e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
     }
 

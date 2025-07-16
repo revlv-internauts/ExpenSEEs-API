@@ -15,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Sort;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDate;
@@ -83,19 +84,41 @@ public class LiquidationService {
         return liquidationRepository.save(liquidation);
     }
 
-    public List<Liquidation> getAllLiquidations() {
+    public List<Liquidation> getAllLiquidations(String sortBy, String sortOrder) {
         User user = userRepository.findByUsername(getCurrentUsername());
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-        if (isAdmin) {
-            return liquidationRepository.findAll();
+
+        String sortField;
+        switch (sortBy.toLowerCase()) {
+            case "date":
+                sortField = "dateOfTransaction";
+                break;
+            case "username":
+                sortField = "user.username";
+                break;
+            case "amount":
+                sortField = "submittedBudget.total";
+                break;
+            case "status":
+                sortField = "status";
+                break;
+            default:
+                sortField = "dateOfTransaction"; // Default sort
         }
-        return liquidationRepository.findAll().stream()
-                .filter(liquidation -> liquidation.getUser().getUserId().equals(user.getUserId()))
-                .toList();
+
+        Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
+        List<Liquidation> liquidations = liquidationRepository.findAll(sort);
+
+        if (!isAdmin) {
+            liquidations = liquidations.stream()
+                    .filter(liquidation -> liquidation.getUser().getUserId().equals(user.getUserId()))
+                    .toList();
+        }
+        return liquidations;
     }
 
     @Transactional
