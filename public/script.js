@@ -1,5 +1,4 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
-                                            // Change to "http://localhost:8080" for local testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
 
 let users = [];
 let expenses = [];
@@ -21,6 +20,8 @@ let currentUser = null;
 let currentUserId = null;
 let pendingBudgetAction = null;
 let pendingLiquidationAction = null;
+let currentPopupType = null; // 'expense' or 'liquidation'
+let currentExpenseId = null;
 
 // =================== AUTH ===================
 async function login() {
@@ -77,7 +78,7 @@ function logout() {
     document.getElementById("admin-profile-picture").src = "images/default-profile.png";
 }
 
-// =================== UI CONTROL ===================
+//=================== UI CONTROL ===================
 function showTab(tabId) {
     const tabs = document.querySelectorAll(".tab");
     tabs.forEach(tab => tab.classList.remove("active"));
@@ -651,46 +652,59 @@ function closePopup(popupElement = null) {
         popupElement.remove();
     } else {
         document.querySelectorAll(".user-popup").forEach(el => el.remove());
-        document.getElementById("expenseImagePopup").style.display = "none";
+        const expensePopup = document.getElementById("expenseImagePopup");
+        const liquidationPopup = document.getElementById("liquidationExpenseImagePopup");
+        const img = currentPopupType === 'liquidation' ?
+            document.getElementById("popup-liquidation-expense-img") :
+            document.getElementById("popup-expense-img");
+
+        if (currentPopupType === 'expense' && expensePopup) {
+            expensePopup.style.display = "none";
+        } else if (currentPopupType === 'liquidation' && liquidationPopup) {
+            liquidationPopup.style.display = "none";
+            // Close the liquidation details popup as well
+            document.getElementById("liquidationPopup").style.display = "none";
+            selectedLiquidationIndex = null;
+        }
+
+        if (img) {
+            img.removeEventListener('mousedown', startDragging);
+            img.removeEventListener('mousemove', drag);
+            img.removeEventListener('mouseup', stopDragging);
+            img.removeEventListener('mouseleave', stopDragging);
+            img.src = '';
+        }
         document.removeEventListener('keydown', handleKeyZoom);
-        const img = document.getElementById("popup-expense-img");
-        img.removeEventListener('mousedown', startDragging);
-        img.removeEventListener('mousemove', drag);
-        img.removeEventListener('mouseup', stopDragging);
-        img.removeEventListener('mouseleave', stopDragging);
         currentExpenseImages = [];
         currentImageIndex = 0;
         zoomLevel = 1;
         panX = 0;
         panY = 0;
+        currentPopupType = null;
     }
     userDetailsPopup = null;
     selectedUserIndex = null;
 }
 
-async function filterUsers() {
-    const value = document.getElementById("searchInput").value.toLowerCase();
-    const tbody = document.getElementById("users-table");
-    tbody.innerHTML = "";
-
-    const filtered = users.filter(u =>
-        u.username?.toLowerCase().includes(value) ||
-        u.email?.toLowerCase().includes(value)
-    ).filter(u => u.username?.toLowerCase() !== "admin");
-
-    for (let index = 0; index < filtered.length; index++) {
-        const user = filtered[index];
-        const profilePicSrc = await loadUserProfilePicture(user.userId);
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><img src="${profilePicSrc}" class="user-profile-pic" alt="${user.username}'s Profile Picture">${user.username}</td>
-            <td>${user.email}</td>
-            <td><button onclick="showUserDetails(${index})">View</button></td>
-        `;
-        tbody.appendChild(row);
-    }
-
-    document.getElementById("no-users-message").style.display = filtered.length === 0 ? "block" : "none";
+function closeLiquidationImagePopup() {
+    const popup = document.getElementById("liquidationExpenseImagePopup");
+    const img = document.getElementById("popup-liquidation-expense-img");
+    popup.style.display = "none";
+    img.removeEventListener('mousedown', startDragging);
+    img.removeEventListener('mousemove', drag);
+    img.removeEventListener('mouseup', stopDragging);
+    img.removeEventListener('mouseleave', stopDragging);
+    document.removeEventListener('keydown', handleKeyZoom);
+    currentExpenseImages = [];
+    currentImageIndex = 0;
+    zoomLevel = 1;
+    panX = 0;
+    panY = 0;
+    currentPopupType = null;
+    img.src = '';
+    // Close the liquidation details popup
+    document.getElementById("liquidationPopup").style.display = "none";
+    selectedLiquidationIndex = null;
 }
 
 // =================== BUDGET FUNCTIONS ===================
@@ -947,20 +961,30 @@ function filterExpenses() {
     updateExpenseTable();
 }
 
-// Remove getSortedExpenses since sorting is now handled by the backend
-// function getSortedExpenses() { ... }
-
 // =================== EXPENSE IMAGE HANDLING ===================
 function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
-    const popup = document.getElementById("expenseImagePopup");
-    const img = document.getElementById("popup-expense-img");
+    const isLiquidation = !!liquidationId;
+    const popup = document.getElementById(isLiquidation ? "liquidationExpenseImagePopup" : "expenseImagePopup");
+    const img = document.getElementById(isLiquidation ? "popup-liquidation-expense-img" : "popup-expense-img");
+    currentPopupType = isLiquidation ? 'liquidation' : 'expense';
+
+    // Reset zoom and pan
     zoomLevel = 1;
     panX = 0;
     panY = 0;
     img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
     img.style.width = 'auto';
     img.style.height = 'auto';
+    img.src = ''; // Clear previous image
 
+    // Remove existing event listeners to prevent duplicates
+    img.removeEventListener('mousedown', startDragging);
+    img.removeEventListener('mousemove', drag);
+    img.removeEventListener('mouseup', stopDragging);
+    img.removeEventListener('mouseleave', stopDragging);
+    document.removeEventListener('keydown', handleKeyZoom);
+
+    // Update image controls (hide Previous/Next buttons for both tabs since only one image is returned)
     const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
     imageControls.innerHTML = `
         <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
@@ -969,106 +993,62 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
         <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
             <i class="fas fa-search-minus"></i> Zoom Out
         </button>
-        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
-            <i class="fas fa-arrow-left"></i> Previous
-        </button>
-        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer; display: ${liquidationId ? 'inline-block' : 'none'};">
-            <i class="fas fa-arrow-right"></i> Next
-        </button>
         <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
             <i class="fas fa-download"></i> Download
         </button>
     `;
 
-    if (liquidationId) {
-        const liquidation = liquidations.find(l => l.liquidationId === liquidationId);
-        const expense = liquidation?.expenses.find(e => e.expenseId === expenseId);
-        currentExpenseImages = expense?.imagePaths || [];
-        currentImageIndex = imageIndex;
+    currentExpenseImages = [];
+    currentImageIndex = 0;
+    currentExpenseId = expenseId;
 
-        if (currentExpenseImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < currentExpenseImages.length) {
-            fetch(`${SERVER_URL}/api/liquidation/${liquidationId}/images/${expenseId}/${currentImageIndex}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
-                return response.blob();
-            })
-            .then(blob => {
-                img.src = URL.createObjectURL(blob);
-                popup.style.display = "flex";
-                document.addEventListener('keydown', handleKeyZoom);
-            })
-            .catch(error => {
-                showToast("Failed to load image: " + error.message);
-                img.src = '';
-                popup.style.display = "flex";
+    const endpoint = isLiquidation
+        ? `${SERVER_URL}/api/liquidation/${expenseId}/images`
+        : `${SERVER_URL}/api/expenses/${expenseId}/images?index=0`;
+
+    fetch(endpoint, {
+        headers: { "Authorization": `Bearer ${token}` }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || `Image not found: ${response.status} ${response.statusText}`);
             });
-        } else {
-            img.src = '';
-            popup.style.display = "flex";
-            showToast("No images available for this expense");
         }
-    } else {
-        currentExpenseImages = [];
-        currentImageIndex = 0;
-        fetch(`${SERVER_URL}/api/expenses/${expenseId}/images?index=0`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`Image not found: ${response.status} ${response.statusText}`);
-            return response.blob();
-        })
-        .then(blob => {
-            img.src = URL.createObjectURL(blob);
-            popup.style.display = "flex";
-            document.addEventListener('keydown', handleKeyZoom);
-        })
-        .catch(error => {
-            showToast("Failed to load image: " + error.message);
-            img.src = '';
-            popup.style.display = "flex";
-        });
-    }
-
-    img.addEventListener('mousedown', startDragging);
-    img.addEventListener('mousemove', drag);
-    img.addEventListener('mouseup', stopDragging);
-    img.addEventListener('mouseleave', stopDragging);
-}
-
-function showPreviousImage() {
-    if (currentImageIndex > 0) {
-        currentImageIndex--;
-        const liquidation = liquidations[selectedLiquidationIndex];
-        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
-    }
-}
-
-function showNextImage() {
-    if (currentImageIndex < currentExpenseImages.length - 1) {
-        currentImageIndex++;
-        const liquidation = liquidations[selectedLiquidationIndex];
-        const expense = liquidation?.expenses.find(e => e.imagePaths[currentImageIndex]);
-        showExpenseImage(expense?.expenseId, liquidation?.liquidationId, currentImageIndex);
-    }
+        return response.blob();
+    })
+    .then(blob => {
+        img.src = URL.createObjectURL(blob);
+        popup.style.display = "flex";
+        document.addEventListener('keydown', handleKeyZoom);
+        img.addEventListener('mousedown', startDragging);
+        img.addEventListener('mousemove', drag);
+        img.addEventListener('mouseup', stopDragging);
+        img.addEventListener('mouseleave', stopDragging);
+    })
+    .catch(error => {
+        showToast("Failed to load image: " + error.message);
+        popup.style.display = "flex";
+    });
 }
 
 function zoomImage(direction) {
-    const img = document.getElementById("popup-expense-img");
+    const img = document.getElementById(currentPopupType === 'liquidation' ? "popup-liquidation-expense-img" : "popup-expense-img");
+    if (!img) return;
+
     if (direction === 'in' && zoomLevel < 3) {
-        zoomLevel += 0.2;
+        zoomLevel += 0.1;
     } else if (direction === 'out' && zoomLevel > 0.5) {
-        zoomLevel -= 0.2;
+        zoomLevel -= 0.1;
     }
+
     img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
 function handleKeyZoom(event) {
     if (event.key === '+' || event.key === '=') {
         zoomImage('in');
-    } else if (event.key === '-' || event.key === '_') {
+    } else if (event.key === '-') {
         zoomImage('out');
     }
 }
@@ -1078,41 +1058,41 @@ function startDragging(event) {
     isDragging = true;
     startX = event.clientX - panX;
     startY = event.clientY - panY;
-    document.getElementById("popup-expense-img").style.cursor = 'grabbing';
+    event.target.style.cursor = 'grabbing';
 }
 
 function drag(event) {
     if (!isDragging) return;
     event.preventDefault();
+    const img = event.target;
     panX = event.clientX - startX;
     panY = event.clientY - startY;
-    const img = document.getElementById("popup-expense-img");
     img.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
 }
 
-function stopDragging() {
+function stopDragging(event) {
     isDragging = false;
-    document.getElementById("popup-expense-img").style.cursor = 'grab';
+    event.target.style.cursor = 'grab';
 }
 
-async function downloadImage() {
-    const img = document.getElementById("popup-expense-img");
+function showPreviousImage() {
+    // Disabled since only one image is returned
+}
+
+function showNextImage() {
+    // Disabled since only one image is returned
+}
+
+function downloadImage() {
+    const img = document.getElementById(currentPopupType === 'liquidation' ? "popup-liquidation-expense-img" : "popup-expense-img");
     if (!img.src) return;
 
-    try {
-        const response = await fetch(img.src);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `expense-image-${currentImageIndex + 1}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        showToast("Failed to download image: " + error.message);
-    }
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = `expense-image-${currentPopupType}-${currentExpenseId}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // =================== LIQUIDATION FUNCTIONS ===================
@@ -1149,26 +1129,28 @@ async function updateLiquidationTable() {
                     (l.username?.toLowerCase().includes(searchValue) || '') ||
                     (l.budgetName?.toLowerCase().includes(searchValue) || '') ||
                     (l.amount?.toString().includes(searchValue) || '') ||
+                    (l.totalSpent?.toString().includes(searchValue) || '') ||
+                    (l.remainingBalance?.toString().includes(searchValue) || '') ||
                     (l.dateOfTransaction ? formatDate(l.dateOfTransaction).toLowerCase().includes(searchValue) : '') ||
                     (l.status?.toLowerCase().includes(searchValue) || '') ||
                     (l.remarks?.toLowerCase().includes(searchValue) || '')
                 );
             }
 
-            filteredLiquidations.forEach((liq, index) => {
+            filteredLiquidations.forEach((l, index) => {
                 const row = document.createElement("tr");
-                const statusClass = liq.status === "PENDING" ? "badge-pending" :
-                                  liq.status === "LIQUIDATED" ? "badge-liquidated" :
+                const statusClass = l.status === "PENDING" ? "badge-pending" :
+                                  l.status === "LIQUIDATED" ? "badge-liquidated" :
                                   "badge-denied";
                 row.innerHTML = `
-                    <td>${liq.dateOfTransaction ? formatDate(liq.dateOfTransaction) : ''}</td>
-                    <td>${liq.username || 'Unknown'}</td>
-                    <td>${liq.budgetName || 'No Name'}</td>
-                    <td>₱${(liq.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(liq.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(liq.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td><span class="status-badge ${statusClass}">${liq.status}</span></td>
-                    <td>${liq.remarks || ''}</td>
+                    <td>${formatDate(l.dateOfTransaction)}</td>
+                    <td>${l.username}</td>
+                    <td>${l.budgetName}</td>
+                    <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td><span class="status-badge ${statusClass}">${l.status}</span></td>
+                    <td>${l.remarks || ''}</td>
                     <td><button onclick="showLiquidationDetails(${index})">View</button></td>
                 `;
                 tbody.appendChild(row);
@@ -1235,7 +1217,7 @@ function showLiquidationDetails(index) {
                             <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
                         </div>
                         <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> <button onclick="showExpenseImage(${exp.expenseId}, ${liquidation.liquidationId}, 0)">View</button>
+                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> <button onclick="showExpenseImage(${exp.liquidationExpenseId}, ${liquidation.liquidationId}, 0)">View</button>
                         </div>
                     </li>
                 `).join('')}
@@ -1261,7 +1243,7 @@ function showLiquidationActionModal(action) {
     const errorElement = document.getElementById("liquidationActionError");
 
     title.textContent = `Confirm ${action.charAt(0) + action.slice(1).toLowerCase()} Liquidation`;
-    message.textContent = `Are you sure you want to ${action.toLowerCase()} this liquidation request?`;
+    message.textContent = `Are you sure you want to ${action.toLowerCase()} this liquidation?`;
     confirmButton.textContent = action.charAt(0) + action.slice(1).toLowerCase();
     confirmButton.className = `confirm-action ${action === 'DENIED' ? 'deny-action' : ''}`;
     errorElement.style.display = "none";

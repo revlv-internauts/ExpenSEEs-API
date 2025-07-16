@@ -19,7 +19,7 @@ import java.util.List;
 public class LiquidationExpenseItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long expenseId;
+    private Long liquidationExpenseId;
 
     @Column(nullable = false)
     private String category;
@@ -39,7 +39,7 @@ public class LiquidationExpenseItem {
     private LocalDateTime updatedAt;
 
     @ElementCollection
-    @CollectionTable(name = "liquidation_expense_images", joinColumns = @JoinColumn(name = "expense_id"))
+    @CollectionTable(name = "liquidation_expense_images", joinColumns = @JoinColumn(name = "liquidation_expense_id"))
     @Column(name = "image_path")
     private List<String> imagePaths = new ArrayList<>();
 

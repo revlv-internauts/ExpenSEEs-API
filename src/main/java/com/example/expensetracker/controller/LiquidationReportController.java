@@ -211,11 +211,52 @@ public class LiquidationReportController {
         }
     }
 
+    @GetMapping("/{liquidationExpenseId}/images")
+    public ResponseEntity<?> getLiquidationImages(@PathVariable Long liquidationExpenseId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            LiquidationExpenseItem expense = liquidationService.getLiquidationExpenseById(liquidationExpenseId);
+            if (expense == null) {
+                response.put("error", "Liquidation expense not found with ID: " + liquidationExpenseId);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+            List<String> imagePaths = expense.getImagePaths();
+            if (imagePaths == null || imagePaths.isEmpty()) {
+                response.put("error", "No images found for liquidation expense " + liquidationExpenseId);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
 
-    @GetMapping("/{liquidationId}/images/{expenseId}/{imageIndex}")
+            // Return the first image
+            String imagePath = imagePaths.get(0); // Get the first image
+            File file = new File(imagePath);
+            if (!file.exists() || !file.isFile()) {
+                response.put("error", "Image file not found: " + imagePath);
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+
+            Resource resource = new FileSystemResource(file);
+            String contentType = Files.probeContentType(file.toPath());
+            if (contentType == null) {
+                contentType = "image/jpeg"; // Default to JPEG
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                    .body(resource);
+        } catch (IOException e) {
+            response.put("error", "Failed to retrieve image: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            response.put("error", "Failed to retrieve image: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{liquidationId}/images/{liquidationExpenseId}/{imageIndex}")
     public ResponseEntity<?> getLiquidationImage(
             @PathVariable Long liquidationId,
-            @PathVariable Long expenseId,
+            @PathVariable Long liquidationExpenseId,
             @PathVariable Integer imageIndex) {
         Map<String, Object> response = new HashMap<>();
         try {
@@ -225,16 +266,16 @@ public class LiquidationReportController {
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
             LiquidationExpenseItem expense = liquidation.getExpenses().stream()
-                    .filter(e -> e.getExpenseId().equals(expenseId))
+                    .filter(e -> e.getLiquidationExpenseId().equals(liquidationExpenseId))
                     .findFirst()
                     .orElse(null);
             if (expense == null) {
-                response.put("error", "Expense not found with ID: " + expenseId);
+                response.put("error", "Liquidation expense not found with ID: " + liquidationExpenseId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
             List<String> imagePaths = expense.getImagePaths();
             if (imagePaths == null || imageIndex < 0 || imageIndex >= imagePaths.size()) {
-                response.put("error", "No image found at index " + imageIndex + " for expense " + expenseId);
+                response.put("error", "No image found at index " + imageIndex + " for liquidation expense " + liquidationExpenseId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
 

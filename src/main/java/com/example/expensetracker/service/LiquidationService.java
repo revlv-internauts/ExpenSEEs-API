@@ -4,6 +4,7 @@ import com.example.expensetracker.Entity.Liquidation;
 import com.example.expensetracker.Entity.LiquidationExpenseItem;
 import com.example.expensetracker.Entity.SubmittedBudget;
 import com.example.expensetracker.Entity.User;
+import com.example.expensetracker.Repository.LiquidationExpenseItemRepository;
 import com.example.expensetracker.Repository.LiquidationRepository;
 import com.example.expensetracker.Repository.SubmittedBudgetRepository;
 import com.example.expensetracker.Repository.UserRepository;
@@ -33,6 +34,9 @@ public class LiquidationService {
 
     @Autowired
     private SubmittedBudgetRepository submittedBudgetRepository;
+
+    @Autowired
+    private LiquidationExpenseItemRepository liquidationExpenseItemRepository;
 
     public Liquidation createLiquidation(Liquidation liquidation, Long budgetId, List<LiquidationExpenseItem> expenses) {
         if (liquidation.getDateOfTransaction() == null) {
@@ -156,6 +160,20 @@ public class LiquidationService {
             throw new UnauthorizedAccessException("Unauthorized access to liquidation");
         }
         return liquidation;
+    }
+
+    public LiquidationExpenseItem getLiquidationExpenseById(Long liquidationExpenseId) {
+        LiquidationExpenseItem expense = liquidationExpenseItemRepository.findById(liquidationExpenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Liquidation expense not found with ID: " + liquidationExpenseId));
+        Liquidation liquidation = expense.getBudget();
+        String currentUsername = getCurrentUsername();
+        User currentUser = userRepository.findByUsername(currentUsername);
+        if (!liquidation.getUser().getUserId().equals(currentUser.getUserId()) &&
+                !SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                        .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new UnauthorizedAccessException("Unauthorized access to liquidation expense");
+        }
+        return expense;
     }
 
     @Transactional

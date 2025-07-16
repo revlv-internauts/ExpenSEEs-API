@@ -733,3 +733,11 @@ tbody tr:hover {
     border: 1px solid #b52025;
     border-radius: 5px;
 }
+
+#liquidationPopup {
+    z-index: 1000; /* Base popup z-index */
+}
+
+#liquidationExpenseImagePopup {
+    z-index: 1100; /* Higher than liquidationPopup to appear above */
+}
