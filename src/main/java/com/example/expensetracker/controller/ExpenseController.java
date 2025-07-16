@@ -172,17 +172,19 @@ public class ExpenseController {
 
     @GetMapping
     public ResponseEntity<List<Expense>> getAllExpenses(
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortOrder) {
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
         return ResponseEntity.ok(expenseService.getAllExpenses(sortBy, sortOrder));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/all")
     public ResponseEntity<List<Expense>> getAllExpensesForAdmin(
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortOrder) {
-        return ResponseEntity.ok(expenseService.getAllExpensesForAdmin(sortBy, sortOrder));
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+        // Map 'date' to 'createdAt' for sorting
+        String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
+        return ResponseEntity.ok(expenseService.getAllExpensesForAdmin(effectiveSortBy, sortOrder));
     }
 
     @DeleteMapping("/{expenseId}")

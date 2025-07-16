@@ -36,10 +36,12 @@ public class BudgetController {
 
     @GetMapping
     public ResponseEntity<?> getAllBudgets(
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortOrder) {
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
         try {
-            List<SubmittedBudget> budgets = budgetService.getAllBudgets(sortBy, sortOrder);
+            // Map 'date' to 'createdAt' for sorting
+            String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
+            List<SubmittedBudget> budgets = budgetService.getAllBudgets(effectiveSortBy, sortOrder);
             return ResponseEntity.ok(budgets);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
