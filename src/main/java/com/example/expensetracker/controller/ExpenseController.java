@@ -174,7 +174,8 @@ public class ExpenseController {
     public ResponseEntity<List<Expense>> getAllExpenses(
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        return ResponseEntity.ok(expenseService.getAllExpenses(sortBy, sortOrder));
+        String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
+        return ResponseEntity.ok(expenseService.getAllExpenses(effectiveSortBy, sortOrder));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

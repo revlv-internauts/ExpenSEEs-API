@@ -78,7 +78,7 @@ public class BudgetService {
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
-                sortField = "budgetDate";
+                sortField = "createdAt";
                 break;
             case "username":
                 sortField = "user.username";
@@ -93,7 +93,7 @@ public class BudgetService {
                 sortField = "status";
                 break;
             default:
-                sortField = "budgetDate"; // Default sort
+                sortField = "createdAt"; // Default sort
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);

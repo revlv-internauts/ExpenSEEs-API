@@ -95,7 +95,7 @@ public class LiquidationService {
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
-                sortField = "dateOfTransaction";
+                sortField = "createdAt";
                 break;
             case "username":
                 sortField = "user.username";
@@ -107,7 +107,7 @@ public class LiquidationService {
                 sortField = "status";
                 break;
             default:
-                sortField = "dateOfTransaction"; // Default sort
+                sortField = "createdAt"; // Default sort
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);

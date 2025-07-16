@@ -58,7 +58,7 @@ public class ExpenseService {
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
-                sortField = "dateOfTransaction";
+                sortField = "createdAt";
                 break;
             case "amount":
                 sortField = "amount";
@@ -70,7 +70,7 @@ public class ExpenseService {
                 sortField = "user.username";
                 break;
             default:
-                sortField = "dateOfTransaction"; // Default sort
+                sortField = "createdAt"; // Default sort
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
@@ -82,7 +82,7 @@ public class ExpenseService {
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
-                sortField = "dateOfTransaction";
+                sortField = "createdAt";
                 break;
             case "amount":
                 sortField = "amount";
@@ -94,7 +94,7 @@ public class ExpenseService {
                 sortField = "user.username";
                 break;
             default:
-                sortField = "dateOfTransaction"; // Default sort
+                sortField = "createdAt"; // Default sort
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
