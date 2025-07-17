@@ -255,6 +255,7 @@ table {
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    table-layout: fixed;
 }
 
 thead {
@@ -266,10 +267,120 @@ td, th {
     padding: 0.8rem;
     text-align: left;
     border-bottom: 1px solid #d5bfc6;
+    white-space: normal;
+    word-wrap: break-word;
 }
 
 tbody tr:hover {
     background: rgba(181, 32, 37, 0.1);
+}
+
+/* Users table column widths */
+#users table th:nth-child(1), #users table td:nth-child(1) { /* Username */
+    width: 30%;
+    max-width: 200px;
+}
+#users table th:nth-child(2), #users table td:nth-child(2) { /* Email */
+    width: 50%;
+    max-width: 300px;
+}
+#users table th:nth-child(3), #users table td:nth-child(3) { /* Actions */
+    width: 20%;
+    max-width: 100px;
+}
+
+/* Budget Requests table column widths */
+#budgets table th:nth-child(1), #budgets table td:nth-child(1) { /* Budget Date */
+    width: 15%;
+    max-width: 120px;
+}
+#budgets table th:nth-child(2), #budgets table td:nth-child(2) { /* Username */
+    width: 15%;
+    max-width: 120px;
+}
+#budgets table th:nth-child(3), #budgets table td:nth-child(3) { /* Request */
+    width: 20%;
+    max-width: 150px;
+}
+#budgets table th:nth-child(4), #budgets table td:nth-child(4) { /* Amount */
+    width: 15%;
+    max-width: 100px;
+}
+#budgets table th:nth-child(5), #budgets table td:nth-child(5) { /* Status */
+    width: 10%;
+    max-width: 80px;
+}
+#budgets table th:nth-child(6), #budgets table td:nth-child(6) { /* Remarks */
+    width: 15%;
+    max-width: 120px;
+}
+#budgets table th:nth-child(7), #budgets table td:nth-child(7) { /* Action */
+    width: 10%;
+    max-width: 80px;
+}
+
+/* Expenses table column widths */
+#expenses table th:nth-child(1), #expenses table td:nth-child(1) { /* Date */
+    width: 15%;
+    max-width: 120px;
+}
+#expenses table th:nth-child(2), #expenses table td:nth-child(2) { /* Username */
+    width: 15%;
+    max-width: 120px;
+}
+#expenses table th:nth-child(3), #expenses table td:nth-child(3) { /* Category */
+    width: 20%;
+    max-width: 150px;
+}
+#expenses table th:nth-child(4), #expenses table td:nth-child(4) { /* Amount */
+    width: 15%;
+    max-width: 100px;
+}
+#expenses table th:nth-child(5), #expenses table td:nth-child(5) { /* Remarks */
+    width: 25%;
+    max-width: 200px;
+}
+#expenses table th:nth-child(6), #expenses table td:nth-child(6) { /* Receipt */
+    width: 10%;
+    max-width: 80px;
+}
+
+/* Liquidations table column widths */
+#liquidations table th:nth-child(1), #liquidations table td:nth-child(1) { /* Date */
+    width: 10%;
+    max-width: 100px;
+}
+#liquidations table th:nth-child(2), #liquidations table td:nth-child(2) { /* Username */
+    width: 10%;
+    max-width: 100px;
+}
+#liquidations table th:nth-child(3), #liquidations table td:nth-child(3) { /* Request */
+    width: 15%;
+    max-width: 120px;
+}
+#liquidations table th:nth-child(4), #liquidations table td:nth-child(4) { /* Amount */
+    width: 10%;
+    max-width: 100px;
+}
+#liquidations table th:nth-child(5), #liquidations table td:nth-child(5) { /* Total Spent */
+    width: 10%;
+    max-width: 100px;
+}
+#liquidations table th:nth-child(6), #liquidations table td:nth-child(6) { /* Remaining Balance */
+    width: 10%;
+    max-width: 100px;
+}
+#liquidations table th:nth-child(7), #liquidations table td:nth-child(7) { /* Status */
+    width: 10%;
+    max-width: 80px;
+}
+#liquidations table th:nth-child(8), #liquidations table td:nth-child(8) { /* Remarks */
+    width: 15%;
+    max-width: 120px;
+}
+#liquidations table th:nth-child(9), #liquidations table td:nth-child(9) { /* Action */
+    width: 10%;
+    max-width: 80px;
 }
 
 /* === Modal === */
