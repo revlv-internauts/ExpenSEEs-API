@@ -193,6 +193,16 @@
         <div id="users" class="tab users-tab">
             <div class="table-header">
                 <h3>Users</h3>
+                <div class="table-actions">
+                    <select id="sortUsers" onchange="filterUsers()">
+                        <option value="createdAt-desc">Sort by Date (Desc)</option>
+                        <option value="createdAt-asc">Sort by Date (Asc)</option>
+                        <option value="username-asc">Sort by Username (Asc)</option>
+                        <option value="username-desc">Sort by Username (Desc)</option>
+                        <option value="email-asc">Sort by Email (Asc)</option>
+                        <option value="email-desc">Sort by Email (Desc)</option>
+                    </select>
+                </div>
             </div>
             <div class="users-header">
                 <div class="search-container">

@@ -25,6 +25,7 @@ let currentExpenseId = null;
 let pendingBudgetDeleteId = null;
 let pendingExpenseDeleteId = null;
 let pendingLiquidationDeleteId = null;
+const DEFAULT_USER_SORT = "createdAt-desc";
 
 
 // Function to sanitize input to prevent XSS
@@ -362,7 +363,9 @@ async function updateDashboard() {
         }
 
         // USERS
-        const usersRes = await fetch(`${SERVER_URL}/api/admin/users`, {
+        const sortUsers = document.getElementById("sortUsers")?.value || DEFAULT_USER_SORT;
+        const [sortBy, sortOrder] = sortUsers.split('-');
+        const usersRes = await fetch(`${SERVER_URL}/api/admin/users?sortBy=${sortBy}&sortOrder=${sortOrder}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const usersData = await usersRes.json();
@@ -641,26 +644,54 @@ function showConfirmDeleteUser(index) {
 async function updateUserTable() {
     const tbody = document.getElementById("users-table");
     tbody.innerHTML = "";
-    const filteredUsers = users.filter(u => u.username?.toLowerCase() !== "admin");
+    const searchValue = document.getElementById("searchInput")?.value.toLowerCase() || "";
+    const sortUsers = document.getElementById("sortUsers")?.value || DEFAULT_USER_SORT;
+    const [sortBy, sortOrder] = sortUsers.split('-');
 
-    for (let index = 0; index < filteredUsers.length; index++) {
-        const user = filteredUsers[index];
-        const profilePicSrc = await loadUserProfilePicture(user.userId);
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><img src="${sanitizeHTML(profilePicSrc)}" class="user-profile-pic" alt="${sanitizeHTML(user.username)}'s Profile Picture">${sanitizeHTML(user.username)}</td>
-            <td>${sanitizeHTML(user.email)}</td>
-            <td>
-                <button onclick="showUserDetails(${index})">View</button>
-                <button class="delete-icon-btn" onclick="showConfirmDeleteUser(${index})">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
+    try {
+        const usersRes = await fetch(`${SERVER_URL}/api/admin/users?sortBy=${sortBy}&sortOrder=${sortOrder}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const usersData = await usersRes.json();
+        if (usersRes.ok) {
+            users = usersData;
+            let filteredUsers = users.filter(u => u.username?.toLowerCase() !== "admin");
+            if (searchValue) {
+                filteredUsers = filteredUsers.filter(u =>
+                    (u.username?.toLowerCase().includes(searchValue) || '') ||
+                    (u.email?.toLowerCase().includes(searchValue) || '')
+                );
+            }
+
+            for (let index = 0; index < filteredUsers.length; index++) {
+                const user = filteredUsers[index];
+                const profilePicSrc = await loadUserProfilePicture(user.userId);
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><img src="${sanitizeHTML(profilePicSrc)}" class="user-profile-pic" alt="${sanitizeHTML(user.username)}'s Profile Picture">${sanitizeHTML(user.username)}</td>
+                    <td>${sanitizeHTML(user.email)}</td>
+                    <td>
+                        <button onclick="showUserDetails(${index})">View</button>
+                        <button class="delete-icon-btn" onclick="showConfirmDeleteUser(${index})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            document.getElementById("no-users-message").style.display = filteredUsers.length === 0 ? "block" : "none";
+        } else {
+            showToast("Failed to fetch users: " + usersData.error);
+        }
+    } catch (error) {
+        showToast("Error fetching users: " + error.message);
     }
+}
 
-    document.getElementById("no-users-message").style.display = filteredUsers.length === 0 ? "block" : "none";
+// Add filterUsers()
+function filterUsers() {
+    updateUserTable();
 }
 
 function showUserDetails(index) {
