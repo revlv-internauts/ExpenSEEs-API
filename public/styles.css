@@ -215,9 +215,11 @@ header h2 {
 /* === Cards and Tables === */
 .balance-section {
     display: flex;
-    margin-top: 1.5rem;
-    gap: 2rem;
     flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: space-between;
+    margin: 1.5rem 0;
+    padding: 0 1rem;
 }
 
 .balance-card {
@@ -225,22 +227,62 @@ header h2 {
     color: #f8e6e6;
     padding: 1.5rem;
     border-radius: 15px;
-    width: 280px;
+    flex: 1;
+    min-width: 250px;
+    max-width: 300px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-.chart-card, .notifications-card {
+.chart-card {
     background: #f8e6e6;
     padding: 1.5rem;
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    width: 300px;
-    max-height: 350px;
+    flex: 2;
+    min-width: 300px;
+    width: 100%;
+    max-height: none;
+}
+
+.notifications-card {
+    background: #f8e6e6;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    flex: 1;
+    min-width: 250px;
+    max-width: 300px;
+    max-height: none;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 25vw !important;
+    max-height: 400px;
+    min-height: 200px;
 }
 
 .chart-card h4, .notifications-card h4 {
     margin: 0 0 1rem;
     color: #b52025;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .balance-section {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0 0.5rem;
+    }
+    .balance-card, .chart-card, .notifications-card {
+        flex: none;
+        width: 100%;
+        max-width: none;
+    }
+    .chart-card canvas {
+        height: 50vw !important;
+        max-height: 300px;
+    }
 }
 
 .notification-item {
