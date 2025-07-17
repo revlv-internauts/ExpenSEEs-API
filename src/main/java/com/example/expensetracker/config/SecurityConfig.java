@@ -16,8 +16,6 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
-import java.util.List;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -30,10 +28,9 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:8080"));
+                    config.addAllowedOrigin("http://localhost:8000");
                     config.addAllowedMethod("*");
                     config.addAllowedHeader("*");
-                    config.setAllowCredentials(true);
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
@@ -41,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/liquidation/**", "/api/forgotPassword/reset-password").authenticated()
                         .requestMatchers("/api/users/{userId}/profile-picture").authenticated()
+                        .requestMatchers("/api/budgets/{budgetId}").hasRole("ADMIN") // Restrict DELETE budget to ADMIN
+                        .requestMatchers("/api/liquidation/{liquidationId}").hasRole("ADMIN") // Restrict DELETE liquidation to ADMIN
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

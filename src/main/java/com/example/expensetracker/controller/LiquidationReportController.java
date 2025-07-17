@@ -14,10 +14,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/liquidation")
@@ -56,7 +57,6 @@ public class LiquidationReportController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Parse expenses JSON
             ObjectMapper mapper = new ObjectMapper();
             List<LiquidationExpenseItemDto> expenseDtos = mapper.readValue(
                     expensesJson,
@@ -68,7 +68,6 @@ public class LiquidationReportController {
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            // Validate each expense DTO
             for (LiquidationExpenseItemDto dto : expenseDtos) {
                 var violations = validator.validate(dto);
                 if (!violations.isEmpty()) {
@@ -79,15 +78,13 @@ public class LiquidationReportController {
                 }
             }
 
-            // Create liquidation
             Liquidation liquidation = new Liquidation();
             liquidation.setDateOfTransaction(expenseDtos.get(0).getDateOfTransaction() != null
                     ? LocalDate.parse(expenseDtos.get(0).getDateOfTransaction())
                     : LocalDate.now());
 
-            // Create expense items and associate files
             List<LiquidationExpenseItem> expenses = new ArrayList<>();
-            MultipartFile[][] allFiles = {files0, files1, files2, files3}; // Support up to 4 expenses
+            MultipartFile[][] allFiles = {files0, files1, files2, files3};
             for (int i = 0; i < expenseDtos.size(); i++) {
                 LiquidationExpenseItemDto dto = expenseDtos.get(i);
                 LiquidationExpenseItem expense = new LiquidationExpenseItem();
@@ -96,7 +93,6 @@ public class LiquidationReportController {
                 expense.setRemarks(dto.getRemarks() != null ? dto.getRemarks() : "");
                 expense.setDateOfTransaction(LocalDate.parse(dto.getDateOfTransaction()));
 
-                // Handle file uploads for this expense
                 List<String> imagePaths = new ArrayList<>();
                 MultipartFile[] files = i < allFiles.length ? allFiles[i] : null;
                 if (files != null && files.length > 0 && !files[0].isEmpty()) {
@@ -133,7 +129,6 @@ public class LiquidationReportController {
                 expenses.add(expense);
             }
 
-            // Create liquidation with budgetId
             Liquidation createdLiquidation = liquidationService.createLiquidation(liquidation, budgetId, expenses);
             return ResponseEntity.ok(createdLiquidation);
         } catch (IllegalArgumentException e) {
@@ -153,14 +148,13 @@ public class LiquidationReportController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
         try {
-            // Map 'date' to 'createdAt' for sorting
             String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
             List<Liquidation> liquidations = liquidationService.getAllLiquidations(effectiveSortBy, sortOrder);
             List<Map<String, Object>> responseList = liquidations.stream().map(liquidation -> {
                 Map<String, Object> liquidationMap = new HashMap<>();
                 SubmittedBudget budget = liquidation.getSubmittedBudget();
                 liquidationMap.put("liquidationId", liquidation.getLiquidationId());
-                liquidationMap.put("budgetId", budget != null ? budget.getBudgetId() : null); // Added budgetId
+                liquidationMap.put("budgetId", budget != null ? budget.getBudgetId() : null);
                 liquidationMap.put("budgetName", budget != null ? budget.getName() : "Unknown");
                 liquidationMap.put("amount", budget != null ? budget.getTotal() : 0.0);
                 liquidationMap.put("totalSpent", liquidation.getTotalSpent());
@@ -192,10 +186,9 @@ public class LiquidationReportController {
                 response.put("error", "Liquidation not found with ID: " + liquidationId);
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
-            // Map liquidation to include budgetName and amount
             SubmittedBudget budget = liquidation.getSubmittedBudget();
             response.put("liquidationId", liquidation.getLiquidationId());
-            response.put("budgetId", budget != null ? budget.getBudgetId() : null); // Added budgetId
+            response.put("budgetId", budget != null ? budget.getBudgetId() : null);
             response.put("budgetName", budget != null ? budget.getName() : "Unknown");
             response.put("amount", budget != null ? budget.getTotal() : 0.0);
             response.put("totalSpent", liquidation.getTotalSpent());
@@ -228,8 +221,7 @@ public class LiquidationReportController {
                 return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
             }
 
-            // Return the first image
-            String imagePath = imagePaths.get(0); // Get the first image
+            String imagePath = imagePaths.get(0);
             File file = new File(imagePath);
             if (!file.exists() || !file.isFile()) {
                 response.put("error", "Image file not found: " + imagePath);
@@ -239,7 +231,7 @@ public class LiquidationReportController {
             Resource resource = new FileSystemResource(file);
             String contentType = Files.probeContentType(file.toPath());
             if (contentType == null) {
-                contentType = "image/jpeg"; // Default to JPEG
+                contentType = "image/jpeg";
             }
 
             return ResponseEntity.ok()
@@ -291,7 +283,7 @@ public class LiquidationReportController {
             Resource resource = new FileSystemResource(file);
             String contentType = Files.probeContentType(file.toPath());
             if (contentType == null) {
-                contentType = "image/jpeg"; // Default to JPEG
+                contentType = "image/jpeg";
             }
 
             return ResponseEntity.ok()
@@ -311,7 +303,7 @@ public class LiquidationReportController {
         Map<String, String> response = new HashMap<>();
         try {
             String status = request.get("status");
-            String remarks = request.get("remarks"); // Optional remarks
+            String remarks = request.get("remarks");
             if (status == null || status.trim().isEmpty()) {
                 response.put("error", "Status is required");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
@@ -330,6 +322,7 @@ public class LiquidationReportController {
     }
 
     @DeleteMapping("/{liquidationId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteLiquidation(@PathVariable Long liquidationId) {
         Map<String, String> response = new HashMap<>();
         try {

@@ -192,7 +192,9 @@ public class ExpenseService {
 
     private void checkExpenseOwnership(Expense expense) {
         String username = getCurrentUsername();
-        if (!expense.getUser().getUsername().equals(username)) {
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !expense.getUser().getUsername().equals(username)) {
             throw new UnauthorizedAccessException("Unauthorized access to expense");
         }
     }

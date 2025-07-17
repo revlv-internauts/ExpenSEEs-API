@@ -4,6 +4,7 @@ import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Entity.ExpenseItem;
 import com.example.expensetracker.Entity.SubmittedBudget;
 import com.example.expensetracker.Entity.User;
+import com.example.expensetracker.dto.BudgetDto;
 import com.example.expensetracker.Repository.BudgetRepository;
 import com.example.expensetracker.Repository.ExpenseRepository;
 import com.example.expensetracker.Repository.UserRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class BudgetService {
@@ -66,7 +68,7 @@ public class BudgetService {
         return budgetRepository.save(budget);
     }
 
-    public List<SubmittedBudget> getAllBudgets(String sortBy, String sortOrder) {
+    public List<BudgetDto> getAllBudgets(String sortBy, String sortOrder) {
         User user = userRepository.findByUsername(getCurrentUsername());
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
@@ -74,7 +76,6 @@ public class BudgetService {
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
-        // Map frontend sort values to database field names
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
@@ -93,7 +94,7 @@ public class BudgetService {
                 sortField = "status";
                 break;
             default:
-                sortField = "createdAt"; // Default sort
+                sortField = "createdAt";
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
@@ -104,7 +105,25 @@ public class BudgetService {
                     .filter(budget -> budget.getUser().getUserId().equals(user.getUserId()))
                     .toList();
         }
-        return budgets;
+
+        return budgets.stream().map(budget -> {
+            BudgetDto dto = new BudgetDto();
+            dto.setBudgetId(budget.getBudgetId());
+            dto.setName(budget.getName());
+            dto.setBudgetDate(budget.getBudgetDate());
+            dto.setTotal(budget.getTotal());
+            dto.setStatus(budget.getStatus());
+            dto.setRemarks(budget.getRemarks());
+            dto.setCreatedAt(budget.getCreatedAt());
+            dto.setUsername(budget.getUser() != null ? budget.getUser().getUsername() : null);
+            dto.setUserId(budget.getUser() != null ? budget.getUser().getUserId() : null);
+            dto.setLiquidationIds(budget.getLiquidations() != null
+                    ? budget.getLiquidations().stream()
+                    .map(liquidation -> liquidation.getLiquidationId())
+                    .collect(Collectors.toList())
+                    : List.of());
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public ResponseEntity<SubmittedBudget> getBudgetById(Long budgetId) {
@@ -146,7 +165,7 @@ public class BudgetService {
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
         budget.setStatus(status);
-        budget.setRemarks(remarks); // Save remarks if provided, null otherwise
+        budget.setRemarks(remarks);
         budgetRepository.save(budget);
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
@@ -183,6 +202,28 @@ public class BudgetService {
         budget.setTotal(budget.getTotal() + expense.getAmount());
         budgetRepository.save(budget);
         return new ResponseEntity<>("Expense associated with budget successfully", HttpStatus.OK);
+    }
+
+    @Transactional
+    public ResponseEntity<String> deleteBudget(Long budgetId) {
+        if (budgetId == null) {
+            return new ResponseEntity<>("Budget ID is required", HttpStatus.BAD_REQUEST);
+        }
+        User currentUser = userRepository.findByUsername(getCurrentUsername());
+        if (currentUser == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.UNAUTHORIZED);
+        }
+        if (budgetRepository.findById(budgetId).isEmpty()) {
+            return new ResponseEntity<>("Budget not found", HttpStatus.NOT_FOUND);
+        }
+        SubmittedBudget budget = budgetRepository.findById(budgetId).get();
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return new ResponseEntity<>("Only admins can delete budgets", HttpStatus.FORBIDDEN);
+        }
+        budgetRepository.delete(budget);
+        return new ResponseEntity<>("Budget deleted successfully", HttpStatus.OK);
     }
 
     private String getCurrentUsername() {
