@@ -23,6 +23,24 @@ let pendingLiquidationAction = null;
 let currentPopupType = null; // 'expense' or 'liquidation'
 let currentExpenseId = null;
 
+
+// Check for stored token on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('currentUser');
+    const storedUserId = localStorage.getItem('currentUserId');
+
+    if (storedToken && storedUser && storedUserId) {
+        token = storedToken;
+        currentUser = JSON.parse(storedUser);
+        currentUserId = storedUserId;
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("dashboard").style.display = "flex";
+        updateDashboard();
+        showProfile();
+    }
+});
+
 // =================== AUTH ===================
 async function login() {
     const username = document.getElementById("username").value;
@@ -48,6 +66,10 @@ async function login() {
                     userId: data.user_id
                 };
                 currentUserId = data.user_id;
+                // Store in localStorage
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('currentUserId', currentUserId);
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("dashboard").style.display = "flex";
                 updateDashboard();
@@ -67,6 +89,10 @@ async function login() {
 }
 
 function logout() {
+    // Clear localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentUserId');
     token = null;
     currentUser = null;
     currentUserId = null;
@@ -76,6 +102,19 @@ function logout() {
     if (userChart) userChart.destroy();
     if (monthlySpendingChart) monthlySpendingChart.destroy();
     document.getElementById("admin-profile-picture").src = "images/default-profile.png";
+}
+
+function showLogoutConfirmModal() {
+    document.getElementById("logoutConfirmModal").style.display = "flex";
+}
+
+function confirmLogout() {
+    document.getElementById("logoutConfirmModal").style.display = "none";
+    logout();
+}
+
+function cancelLogout() {
+    document.getElementById("logoutConfirmModal").style.display = "none";
 }
 
 //=================== UI CONTROL ===================
