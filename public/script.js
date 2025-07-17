@@ -23,6 +23,11 @@ let pendingLiquidationAction = null;
 let currentPopupType = null; // 'expense' or 'liquidation'
 let currentExpenseId = null;
 
+// Function to sanitize input to prevent XSS
+function sanitizeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/&/g, '&amp;');
+}
 
 // Check for stored token on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -606,11 +611,11 @@ async function updateUserTable() {
         const user = filteredUsers[index];
         const profilePicSrc = await loadUserProfilePicture(user.userId);
         const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><img src="${profilePicSrc}" class="user-profile-pic" alt="${user.username}'s Profile Picture">${user.username}</td>
-            <td>${user.email}</td>
-            <td><button onclick="showUserDetails(${index})">View</button></td>
-        `;
+row.innerHTML = `
+    <td><img src="${sanitizeHTML(profilePicSrc)}" class="user-profile-pic" alt="${sanitizeHTML(user.username)}'s Profile Picture">${sanitizeHTML(user.username)}</td>
+    <td>${sanitizeHTML(user.email)}</td>
+    <td><button onclick="showUserDetails(${index})">View</button></td>
+`;
         tbody.appendChild(row);
     }
 
@@ -623,38 +628,38 @@ function showUserDetails(index) {
 
     userDetailsPopup = document.createElement("div");
     userDetailsPopup.className = "user-popup";
-    userDetailsPopup.innerHTML = `
-        <div class="modal-content popup-card">
-            <span class="close-btn" onclick="closePopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
-            <h3>User Details</h3>
-            <p><strong>ID:</strong> ${user.userId}</p>
-            <p><strong>Username:</strong> ${user.username}</p>
-            <p><strong>Email:</strong> ${user.email}</p>
-            <h4>Reset Password</h4>
-            <form id="user-reset-password-form" class="profile-form">
-                <div class="form-group password-wrapper">
-                    <label for="user-new-password">New Password</label>
-                    <input type="password" id="user-new-password" required>
-                    <span class="toggle-password" onclick="togglePassword('user-new-password', this)" aria-label="Toggle password visibility">
-                        <i class="fa-solid fa-eye-slash"></i>
-                    </span>
-                </div>
-                <div class="form-group password-wrapper">
-                    <label for="user-confirm-password">Confirm New Password</label>
-                    <input type="password" id="user-confirm-password" required>
-                    <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)" aria-label="Toggle password visibility">
-                        <i class="fa-solid fa-eye-slash"></i>
-                    </span>
-                </div>
-                <p id="user-reset-error" class="error-text" style="display: none;"></p>
-                <button type="button" onclick="resetUserPassword(users.filter(u => u.username?.toLowerCase() !== 'admin')[${index}], this.closest('.user-popup'))" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Reset Password</button>
-            </form>
-            <div class="popup-actions">
-                <button onclick="confirmDeleteUser()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Delete</button>
-                <button onclick="closePopup()" style="background: linear-gradient(135deg, #ccc, #aaa); color: black;">Close</button>
+userDetailsPopup.innerHTML = `
+    <div class="modal-content popup-card">
+        <span class="close-btn" onclick="closePopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
+        <h3>User Details</h3>
+        <p><strong>ID:</strong> ${sanitizeHTML(user.userId)}</p>
+        <p><strong>Username:</strong> ${sanitizeHTML(user.username)}</p>
+        <p><strong>Email:</strong> ${sanitizeHTML(user.email)}</p>
+        <h4>Reset Password</h4>
+        <form id="user-reset-password-form" class="profile-form">
+            <div class="form-group password-wrapper">
+                <label for="user-new-password">New Password</label>
+                <input type="password" id="user-new-password" required>
+                <span class="toggle-password" onclick="togglePassword('user-new-password', this)" aria-label="Toggle password visibility">
+                    <i class="fa-solid fa-eye-slash"></i>
+                </span>
             </div>
+            <div class="form-group password-wrapper">
+                <label for="user-confirm-password">Confirm New Password</label>
+                <input type="password" id="user-confirm-password" required>
+                <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)" aria-label="Toggle password visibility">
+                    <i class="fa-solid fa-eye-slash"></i>
+                </span>
+            </div>
+            <p id="user-reset-error" class="error-text" style="display: none;"></p>
+            <button type="button" onclick="resetUserPassword(users.filter(u => u.username?.toLowerCase() !== 'admin')[${index}], this.closest('.user-popup'))" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Reset Password</button>
+        </form>
+        <div class="popup-actions">
+            <button onclick="confirmDeleteUser()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Delete</button>
+            <button onclick="closePopup()" style="background: linear-gradient(135deg, #ccc, #aaa); color: black;">Close</button>
         </div>
-    `;
+    </div>
+`;
     document.body.appendChild(userDetailsPopup);
 }
 
@@ -794,15 +799,15 @@ async function updateBudgetTable() {
                 const statusClass = req.status === "PENDING" ? "badge-pending" :
                                   req.status === "RELEASED" ? "badge-released" :
                                   "badge-denied";
-                row.innerHTML = `
-                    <td>${formatDate(req.date)}</td>
-                    <td>${req.username}</td>
-                    <td>${req.name}</td>
-                    <td>₱${(req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td><span class="status-badge ${statusClass}">${req.status}</span></td>
-                    <td>${req.remarks || ''}</td>
-                    <td><button onclick="showBudgetDetails(${index})">View</button></td>
-                `;
+row.innerHTML = `
+    <td>${sanitizeHTML(formatDate(req.date))}</td>
+    <td>${sanitizeHTML(req.username)}</td>
+    <td>${sanitizeHTML(req.name)}</td>
+    <td>₱${sanitizeHTML((req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
+    <td><span class="status-badge ${statusClass}">${sanitizeHTML(req.status)}</span></td>
+    <td>${sanitizeHTML(req.remarks || '')}</td>
+    <td><button onclick="showBudgetDetails(${index})">View</button></td>
+`;
                 tbody.appendChild(row);
             });
 
@@ -828,50 +833,50 @@ function showBudgetDetails(index) {
     const actionsDiv = document.getElementById("budgetActions");
     const isPending = budget.status === "PENDING";
 
-    detailsDiv.innerHTML = `
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Date:</span> <span style="word-break: break-word;">${formatDate(budget.date)}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${budget.username || 'Unknown'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${budget.name || 'No Name'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${(budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "RELEASED" ? "badge-released" : "badge-denied"}" style="word-break: break-word;">${budget.status || 'PENDING'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${budget.remarks || 'None'}</span>
-        </div>
-        <h4 style="margin: 1rem 0;">Associated Expense Items:</h4>
-        ${budget.expenses && budget.expenses.length > 0 ? `
-            <ul style="padding-left: 20px; margin: 0;">
-                ${budget.expenses.map(exp => `
-                    <li style="margin-bottom: 1rem;">
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${exp.category || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Quantity:</span> <span style="word-break: break-word;">${exp.quantity || 0}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount per Unit:</span> <span style="word-break: break-word;">₱${(exp.amountPerUnit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Subtotal:</span> <span style="word-break: break-word;">₱${(exp.quantity * (exp.amountPerUnit || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
-                        </div>
-                    </li>
-                `).join('')}
-            </ul>
-        ` : '<p style="margin: 1rem 0;">No expense items associated with this budget request yet.</p>'}
-    `;
+detailsDiv.innerHTML = `
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Date:</span> <span style="word-break: break-word;">${sanitizeHTML(formatDate(budget.date))}</span>
+    </div>
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${sanitizeHTML(budget.username || 'Unknown')}</span>
+    </div>
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Request Name:</span> <span style="word-break: break-word;">${sanitizeHTML(budget.name || 'No Name')}</span>
+    </div>
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Amount:</span> <span style="word-break: break-word;">₱${sanitizeHTML((budget.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} ${expenseTotal !== (budget.amount || 0) && budget.expenses.length > 0 ? `(Calculated from items: ₱${sanitizeHTML(expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))})` : ''}</span>
+    </div>
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${budget.status === "PENDING" ? "badge-pending" : budget.status === "RELEASED" ? "badge-released" : "badge-denied"}" style="word-break: break-word;">${sanitizeHTML(budget.status || 'PENDING')}</span>
+    </div>
+    <div>
+        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${sanitizeHTML(budget.remarks || 'None')}</span>
+    </div>
+    <h4 style="margin: 1rem 0;">Associated Expense Items:</h4>
+    ${budget.expenses && budget.expenses.length > 0 ? `
+        <ul style="padding-left: 20px; margin: 0;">
+            ${budget.expenses.map(exp => `
+                <li style="margin-bottom: 1rem;">
+                    <div>
+                        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${sanitizeHTML(exp.category || 'N/A')}</span>
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Quantity:</span> <span style="word-break: break-word;">${sanitizeHTML((exp.quantity || 0).toString())}</span>
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount per Unit:</span> <span style="word-break: break-word;">₱${sanitizeHTML((exp.amountPerUnit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Subtotal:</span> <span style="word-break: break-word;">₱${sanitizeHTML((exp.quantity * (exp.amountPerUnit || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${sanitizeHTML(exp.remarks || 'None')}</span>
+                    </div>
+                </li>
+            `).join('')}
+        </ul>
+    ` : '<p style="margin: 1rem 0;">No expense items associated with this budget request yet.</p>'}
+`;
 
     actionsDiv.innerHTML = isPending ? `
         <button onclick="showBudgetActionModal('RELEASED')" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Release</button>
@@ -976,14 +981,14 @@ async function updateExpenseTable() {
 
             filteredExpenses.forEach(exp => {
                 const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : ''}</td>
-                    <td>${exp.username || 'Unknown'}</td>
-                    <td>${exp.category || ''}</td>
-                    <td>₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>${exp.remarks || ''}</td>
-                    <td><button onclick="showExpenseImage(${exp.expenseId}, null, 0)">View</button></td>
-                `;
+row.innerHTML = `
+    <td>${sanitizeHTML(exp.dateOfTransaction ? formatDate(exp.dateOfTransaction) : '')}</td>
+    <td>${sanitizeHTML(exp.username || 'Unknown')}</td>
+    <td>${sanitizeHTML(exp.category || '')}</td>
+    <td>₱${sanitizeHTML((exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
+    <td>${sanitizeHTML(exp.remarks || '')}</td>
+    <td><button onclick="showExpenseImage(${exp.expenseId}, null, 0)">View</button></td>
+`;
                 tbody.appendChild(row);
             });
 
@@ -1181,17 +1186,17 @@ async function updateLiquidationTable() {
                 const statusClass = l.status === "PENDING" ? "badge-pending" :
                                   l.status === "LIQUIDATED" ? "badge-liquidated" :
                                   "badge-denied";
-                row.innerHTML = `
-                    <td>${formatDate(l.dateOfTransaction)}</td>
-                    <td>${l.username}</td>
-                    <td>${l.budgetName}</td>
-                    <td>₱${(l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td>₱${(l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td><span class="status-badge ${statusClass}">${l.status}</span></td>
-                    <td>${l.remarks || ''}</td>
-                    <td><button onclick="showLiquidationDetails(${index})">View</button></td>
-                `;
+row.innerHTML = `
+    <td>${sanitizeHTML(formatDate(l.dateOfTransaction))}</td>
+    <td>${sanitizeHTML(l.username)}</td>
+    <td>${sanitizeHTML(l.budgetName)}</td>
+    <td>₱${sanitizeHTML((l.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
+    <td>₱${sanitizeHTML((l.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
+    <td>₱${sanitizeHTML((l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
+    <td><span class="status-badge ${statusClass}">${sanitizeHTML(l.status)}</span></td>
+    <td>${sanitizeHTML(l.remarks || '')}</td>
+    <td><button onclick="showLiquidationDetails(${index})">View</button></td>
+`;
                 tbody.appendChild(row);
             });
 
@@ -1216,53 +1221,53 @@ function showLiquidationDetails(index) {
     const actionsDiv = document.getElementById("liquidationActions");
     const isPending = liquidation.status === "PENDING";
 
-    detailsDiv.innerHTML = `
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${formatDate(liquidation.dateOfTransaction)}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${liquidation.username || 'Unknown'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Name:</span> <span style="word-break: break-word;">${liquidation.budgetName || 'No Name'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Spent:</span> <span style="word-break: break-word;">₱${(liquidation.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remaining Balance:</span> <span style="word-break: break-word;">₱${(liquidation.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${liquidation.status === "PENDING" ? "badge-pending" : liquidation.status === "LIQUIDATED" ? "badge-liquidated" : "badge-denied"}" style="word-break: break-word;">${liquidation.status || 'PENDING'}</span>
-        </div>
-        <div>
-            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${liquidation.remarks || 'None'}</span>
-        </div>
-        <h4 style="margin: 1rem 0;">Associated Expenses:</h4>
-        ${liquidation.expenses && liquidation.expenses.length > 0 ? `
-            <ul style="padding-left: 20px; margin: 0;">
-                ${liquidation.expenses.map(exp => `
-                    <li style="margin-bottom: 1rem;">
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${exp.category || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${exp.remarks || 'None'}</span>
-                        </div>
-                        <div>
-                            <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> <button onclick="showExpenseImage(${exp.liquidationExpenseId}, ${liquidation.liquidationId}, 0)">View</button>
-                        </div>
-                    </li>
-                `).join('')}
-            </ul>
-        ` : '<p style="margin: 1rem 0;">No expenses associated with this liquidation yet.</p>'}
-    `;
+ detailsDiv.innerHTML = `
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Date:</span> <span style="word-break: break-word;">${sanitizeHTML(formatDate(liquidation.dateOfTransaction))}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Username:</span> <span style="word-break: break-word;">${sanitizeHTML(liquidation.username || 'Unknown')}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Budget Name:</span> <span style="word-break: break-word;">${sanitizeHTML(liquidation.budgetName || 'No Name')}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${sanitizeHTML((liquidation.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Total Spent:</span> <span style="word-break: break-word;">₱${sanitizeHTML((liquidation.totalSpent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remaining Balance:</span> <span style="word-break: break-word;">₱${sanitizeHTML((liquidation.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Status:</span> <span class="status-badge ${liquidation.status === "PENDING" ? "badge-pending" : liquidation.status === "LIQUIDATED" ? "badge-liquidated" : "badge-denied"}" style="word-break: break-word;">${sanitizeHTML(liquidation.status || 'PENDING')}</span>
+     </div>
+     <div>
+         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${sanitizeHTML(liquidation.remarks || 'None')}</span>
+     </div>
+     <h4 style="margin: 1rem 0;">Associated Expenses:</h4>
+     ${liquidation.expenses && liquidation.expenses.length > 0 ? `
+         <ul style="padding-left: 20px; margin: 0;">
+             ${liquidation.expenses.map(exp => `
+                 <li style="margin-bottom: 1rem;">
+                     <div>
+                         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Category:</span> <span style="word-break: break-word;">${sanitizeHTML(exp.category || 'N/A')}</span>
+                     </div>
+                     <div>
+                         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Amount:</span> <span style="word-break: break-word;">₱${sanitizeHTML((exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
+                     </div>
+                     <div>
+                         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Remarks:</span> <span style="word-break: break-word;">${sanitizeHTML(exp.remarks || 'None')}</span>
+                     </div>
+                     <div>
+                         <span style="font-weight: bold; min-width: 120px; display: inline-block;">Receipt:</span> <button onclick="showExpenseImage(${exp.liquidationExpenseId}, ${liquidation.liquidationId}, 0)">View</button>
+                     </div>
+                 </li>
+             `).join('')}
+         </ul>
+     ` : '<p style="margin: 1rem 0;">No expenses associated with this liquidation yet.</p>'}
+ `;
 
     actionsDiv.innerHTML = isPending ? `
         <button onclick="showLiquidationActionModal('LIQUIDATED')" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Liquidate</button>
