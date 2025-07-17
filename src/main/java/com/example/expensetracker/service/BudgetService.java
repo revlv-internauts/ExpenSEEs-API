@@ -98,11 +98,11 @@ public class BudgetService {
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
-        List<SubmittedBudget> budgets = budgetRepository.findAll(sort);
+        List<SubmittedBudget> budgets = budgetRepository.findAllWithUserAndLiquidations(sort);
 
         if (!isAdmin) {
             budgets = budgets.stream()
-                    .filter(budget -> budget.getUser().getUserId().equals(user.getUserId()))
+                    .filter(budget -> budget.getUser() != null && budget.getUser().getUserId().equals(user.getUserId()))
                     .toList();
         }
 
@@ -126,7 +126,7 @@ public class BudgetService {
         }).collect(Collectors.toList());
     }
 
-    public ResponseEntity<SubmittedBudget> getBudgetById(Long budgetId) {
+    public ResponseEntity<BudgetDto> getBudgetById(Long budgetId) {
         if (budgetId == null) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
@@ -140,10 +140,26 @@ public class BudgetService {
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin && !budget.getUser().getUserId().equals(currentUser.getUserId())) {
+        if (!isAdmin && (budget.getUser() == null || !budget.getUser().getUserId().equals(currentUser.getUserId()))) {
             return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
-        return new ResponseEntity<>(budget, HttpStatus.OK);
+
+        BudgetDto dto = new BudgetDto();
+        dto.setBudgetId(budget.getBudgetId());
+        dto.setName(budget.getName());
+        dto.setBudgetDate(budget.getBudgetDate());
+        dto.setTotal(budget.getTotal());
+        dto.setStatus(budget.getStatus());
+        dto.setRemarks(budget.getRemarks());
+        dto.setCreatedAt(budget.getCreatedAt());
+        dto.setUsername(budget.getUser() != null ? budget.getUser().getUsername() : null);
+        dto.setUserId(budget.getUser() != null ? budget.getUser().getUserId() : null);
+        dto.setLiquidationIds(budget.getLiquidations() != null
+                ? budget.getLiquidations().stream()
+                .map(liquidation -> liquidation.getLiquidationId())
+                .collect(Collectors.toList())
+                : List.of());
+        return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
     @Transactional
@@ -183,14 +199,14 @@ public class BudgetService {
             return new ResponseEntity<>("Budget not found", HttpStatus.NOT_FOUND);
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
-        if (!budget.getUser().getUserId().equals(currentUser.getUserId())) {
+        if (budget.getUser() == null || !budget.getUser().getUserId().equals(currentUser.getUserId())) {
             return new ResponseEntity<>("Unauthorized access to budget", HttpStatus.FORBIDDEN);
         }
         if (expenseRepository.findById(expenseId).isEmpty()) {
             return new ResponseEntity<>("Expense not found", HttpStatus.NOT_FOUND);
         }
         Expense expense = expenseRepository.findById(expenseId).get();
-        if (!expense.getUser().getUserId().equals(currentUser.getUserId())) {
+        if (expense.getUser() == null || !expense.getUser().getUserId().equals(currentUser.getUserId())) {
             return new ResponseEntity<>("Unauthorized access to expense", HttpStatus.FORBIDDEN);
         }
         ExpenseItem item = new ExpenseItem();

@@ -54,7 +54,7 @@ public class BudgetController {
     @GetMapping("/{budgetId}")
     public ResponseEntity<?> getBudgetById(@PathVariable Long budgetId) {
         try {
-            ResponseEntity<SubmittedBudget> response = budgetService.getBudgetById(budgetId);
+            ResponseEntity<BudgetDto> response = budgetService.getBudgetById(budgetId);
             if (response.getStatusCode() == HttpStatus.OK) {
                 return ResponseEntity.ok(response.getBody());
             } else {
