@@ -496,6 +496,33 @@
                 <button class="cancel-action" onclick="cancelLogout()">Cancel</button>
             </div>
         </div>
+        <div id="expenseDeleteModal" class="modal-confirm" style="display: none;">
+            <div class="modal-confirm-content">
+                <h3>Confirm Delete Expense</h3>
+                <p id="expenseDeleteMessage">Are you sure you want to delete this expense?</p>
+                <p id="expenseDeleteError" class="error-text" style="display: none; color: red;"></p>
+                <button id="expenseConfirmDelete" class="confirm-action deny-action">Delete</button>
+                <button class="cancel-action" onclick="closeExpenseDeleteModal()">Cancel</button>
+            </div>
+        </div>
+        <div id="budgetDeleteModal" class="modal-confirm" style="display: none;">
+            <div class="modal-confirm-content">
+                <h3>Confirm Delete Budget</h3>
+                <p id="budgetDeleteMessage">Are you sure you want to delete this budget request?</p>
+                <p id="budgetDeleteError" class="error-text" style="display: none; color: red;"></p>
+                <button id="budgetConfirmDelete" class="confirm-action deny-action">Delete</button>
+                <button class="cancel-action" onclick="closeBudgetDeleteModal()">Cancel</button>
+            </div>
+        </div>
+        <div id="liquidationDeleteModal" class="modal-confirm" style="display: none;">
+            <div class="modal-confirm-content">
+                <h3>Confirm Delete Liquidation</h3>
+                <p id="liquidationDeleteMessage">Are you sure you want to delete this liquidation?</p>
+                <p id="liquidationDeleteError" class="error-text" style="display: none; color: red;"></p>
+                <button id="liquidationConfirmDelete" class="confirm-action deny-action">Delete</button>
+                <button class="cancel-action" onclick="closeLiquidationDeleteModal()">Cancel</button>
+            </div>
+        </div>
     </div>
 </div>
 

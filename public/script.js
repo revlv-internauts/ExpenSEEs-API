@@ -1,4 +1,4 @@
-const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
+const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
 
 let users = [];
 let expenses = [];
@@ -22,6 +22,10 @@ let pendingBudgetAction = null;
 let pendingLiquidationAction = null;
 let currentPopupType = null; // 'expense' or 'liquidation'
 let currentExpenseId = null;
+let pendingBudgetDeleteId = null;
+let pendingExpenseDeleteId = null;
+let pendingLiquidationDeleteId = null;
+
 
 // Function to sanitize input to prevent XSS
 function sanitizeHTML(str) {
@@ -826,7 +830,12 @@ row.innerHTML = `
     <td>₱${sanitizeHTML((req.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
     <td><span class="status-badge ${statusClass}">${sanitizeHTML(req.status)}</span></td>
     <td>${sanitizeHTML(req.remarks || '')}</td>
-    <td><button onclick="showBudgetDetails(${index})">View</button></td>
+    <td>
+        <button onclick="showBudgetDetails(${index})">View</button>
+        <button class="delete-icon-btn" onclick="showBudgetDeleteModal(${req.budgetId})">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </td>
 `;
                 tbody.appendChild(row);
             });
@@ -1007,7 +1016,12 @@ row.innerHTML = `
     <td>${sanitizeHTML(exp.category || '')}</td>
     <td>₱${sanitizeHTML((exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
     <td>${sanitizeHTML(exp.remarks || '')}</td>
-    <td><button onclick="showExpenseImage(${exp.expenseId}, null, 0)">View</button></td>
+    <td>
+        <button onclick="showExpenseImage(${exp.expenseId}, null, 0)">View</button>
+        <button class="delete-icon-btn" onclick="showExpenseDeleteModal(${exp.expenseId})">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </td>
 `;
                 tbody.appendChild(row);
             });
@@ -1160,6 +1174,145 @@ function downloadImage() {
 }
 
 // =================== LIQUIDATION FUNCTIONS ===================
+// =================== DELETE FUNCTIONS ===================
+function showBudgetDeleteModal(budgetId) {
+    pendingBudgetDeleteId = budgetId;
+    const modal = document.getElementById("budgetDeleteModal");
+    const message = document.getElementById("budgetDeleteMessage");
+    const errorElement = document.getElementById("budgetDeleteError");
+
+    message.textContent = `Are you sure you want to delete this budget request?`;
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    document.getElementById("budgetConfirmDelete").onclick = () => confirmBudgetDelete();
+    modal.style.display = "flex";
+}
+
+function closeBudgetDeleteModal() {
+    document.getElementById("budgetDeleteModal").style.display = "none";
+    pendingBudgetDeleteId = null;
+}
+
+async function confirmBudgetDelete() {
+    if (!pendingBudgetDeleteId) return;
+    const errorElement = document.getElementById("budgetDeleteError");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/budgets/${pendingBudgetDeleteId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            budgetRequests = budgetRequests.filter(b => b.budgetId !== pendingBudgetDeleteId);
+            updateBudgetTable();
+            closeBudgetDeleteModal();
+            showToast(data.message || "Budget deleted successfully");
+        } else {
+            errorElement.textContent = data.error || "Failed to delete budget";
+            errorElement.style.display = "block";
+        }
+    } catch (error) {
+        errorElement.textContent = "Error deleting budget: " + error.message;
+        errorElement.style.display = "block";
+    }
+}
+
+function showExpenseDeleteModal(expenseId) {
+    pendingExpenseDeleteId = expenseId;
+    const modal = document.getElementById("expenseDeleteModal");
+    const message = document.getElementById("expenseDeleteMessage");
+    const errorElement = document.getElementById("expenseDeleteError");
+
+    message.textContent = `Are you sure you want to delete this expense?`;
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    document.getElementById("expenseConfirmDelete").onclick = () => confirmExpenseDelete();
+    modal.style.display = "flex";
+}
+
+function closeExpenseDeleteModal() {
+    document.getElementById("expenseDeleteModal").style.display = "none";
+    pendingExpenseDeleteId = null;
+}
+
+async function confirmExpenseDelete() {
+    if (!pendingExpenseDeleteId) return;
+    const errorElement = document.getElementById("expenseDeleteError");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/expenses/${pendingExpenseDeleteId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            expenses = expenses.filter(e => e.expenseId !== pendingExpenseDeleteId);
+            updateExpenseTable();
+            closeExpenseDeleteModal();
+            showToast(data.message || "Expense deleted successfully");
+        } else {
+            errorElement.textContent = data.error || "Failed to delete expense";
+            errorElement.style.display = "block";
+        }
+    } catch (error) {
+        errorElement.textContent = "Error deleting expense: " + error.message;
+        errorElement.style.display = "block";
+    }
+}
+
+function showLiquidationDeleteModal(liquidationId) {
+    pendingLiquidationDeleteId = liquidationId;
+    const modal = document.getElementById("liquidationDeleteModal");
+    const message = document.getElementById("liquidationDeleteMessage");
+    const errorElement = document.getElementById("liquidationDeleteError");
+
+    message.textContent = `Are you sure you want to delete this liquidation?`;
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    document.getElementById("liquidationConfirmDelete").onclick = () => confirmLiquidationDelete();
+    modal.style.display = "flex";
+}
+
+function closeLiquidationDeleteModal() {
+    document.getElementById("liquidationDeleteModal").style.display = "none";
+    pendingLiquidationDeleteId = null;
+}
+
+async function confirmLiquidationDelete() {
+    if (!pendingLiquidationDeleteId) return;
+    const errorElement = document.getElementById("liquidationDeleteError");
+    errorElement.style.display = "none";
+    errorElement.textContent = "";
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/liquidation/${pendingLiquidationDeleteId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            liquidations = liquidations.filter(l => l.liquidationId !== pendingLiquidationDeleteId);
+            updateLiquidationTable();
+            closeLiquidationDeleteModal();
+            showToast(data.message || "Liquidation deleted successfully");
+        } else {
+            errorElement.textContent = data.error || "Failed to delete liquidation";
+            errorElement.style.display = "block";
+        }
+    } catch (error) {
+        errorElement.textContent = "Error deleting liquidation: " + error.message;
+        errorElement.style.display = "block";
+    }
+}
+
 async function updateLiquidationTable() {
     const tbody = document.getElementById("liquidation-table");
     tbody.innerHTML = "";
@@ -1215,7 +1368,12 @@ row.innerHTML = `
     <td>₱${sanitizeHTML((l.remainingBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
     <td><span class="status-badge ${statusClass}">${sanitizeHTML(l.status)}</span></td>
     <td>${sanitizeHTML(l.remarks || '')}</td>
-    <td><button onclick="showLiquidationDetails(${index})">View</button></td>
+    <td>
+        <button onclick="showLiquidationDetails(${index})">View</button>
+        <button class="delete-icon-btn" onclick="showLiquidationDeleteModal(${l.liquidationId})">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </td>
 `;
                 tbody.appendChild(row);
             });
