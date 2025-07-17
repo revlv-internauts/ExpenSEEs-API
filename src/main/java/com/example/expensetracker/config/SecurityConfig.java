@@ -37,9 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/sign-in", "/api/forgotPassword/**", "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/liquidation/**", "/api/forgotPassword/reset-password").authenticated()
-                        .requestMatchers("/api/users/{userId}/profile-picture").authenticated()
-                        .requestMatchers("/api/budgets/{budgetId}").hasRole("ADMIN") // Restrict DELETE budget to ADMIN
-                        .requestMatchers("/api/liquidation/{liquidationId}").hasRole("ADMIN") // Restrict DELETE liquidation to ADMIN
+                        .requestMatchers("/api/users/{userId}/profile-picture").authenticated() // New endpoint
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
