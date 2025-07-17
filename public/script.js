@@ -1,4 +1,4 @@
-const SERVER_URL = "http://152.42.192.226:8080"; // Change to "http://152.42.192.226:8080" for server testing
+const SERVER_URL = "http://localhost:8080"; // Change to "http://152.42.192.226:8080" for server testing
 
 let users = [];
 let expenses = [];
@@ -160,14 +160,34 @@ async function loadProfilePicture() {
 
         if (response.ok) {
             const blob = await response.blob();
-            const img = document.getElementById("admin-profile-picture");
-            img.src = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
+            // Update both profile tab and sidebar images
+            document.getElementById("admin-profile-picture").src = url;
+            document.getElementById("sidebar-profile-picture").src = url;
         } else {
             document.getElementById("admin-profile-picture").src = "images/default-profile.png";
+            document.getElementById("sidebar-profile-picture").src = "images/default-profile.png";
         }
     } catch (error) {
         console.error("Error loading profile picture:", error);
         document.getElementById("admin-profile-picture").src = "images/default-profile.png";
+        document.getElementById("sidebar-profile-picture").src = "images/default-profile.png";
+    }
+}
+
+// Update sidebar username and email when showing profile
+function showProfile() {
+    if (document.getElementById('profile').classList.contains('active') && currentUser) {
+        document.getElementById('admin-username').textContent = currentUser.username || 'N/A';
+        document.getElementById('admin-email').textContent = currentUser.email || 'N/A';
+        document.getElementById('sidebar-username').textContent = currentUser.username || 'N/A';
+        document.getElementById('sidebar-email').textContent = currentUser.email || 'N/A';
+        loadProfilePicture();
+    } else if (currentUser) {
+        // Update sidebar even if profile tab is not active
+        document.getElementById('sidebar-username').textContent = currentUser.username || 'N/A';
+        document.getElementById('sidebar-email').textContent = currentUser.email || 'N/A';
+        loadProfilePicture();
     }
 }
 

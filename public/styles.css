@@ -90,6 +90,33 @@ body, html {
 }
 
 /* === Sidebar === */
+.sidebar-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.sidebar-profile-pic {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    border: 2px solid #f46354;
+}
+
+.sidebar-username, .sidebar-email {
+    color: #f8e6e6;
+    font-size: 0.9rem;
+    margin: 0.2rem 0;
+    text-align: center;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .sidebar {
     position: fixed;
     top: 0;

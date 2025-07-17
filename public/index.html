@@ -132,7 +132,11 @@
 
 <div id="dashboard" class="dashboard" style="display: none">
     <div id="sidebar" class="sidebar">
-        <img src="images/logo.png" class="sidebar-logo">
+        <div class="sidebar-profile">
+            <img id="sidebar-profile-picture" src="images/default-profile.png" alt="Admin Profile Picture" class="sidebar-profile-pic">
+            <p class="sidebar-username" id="sidebar-username"></p>
+            <p class="sidebar-email" id="sidebar-email"></p>
+        </div>
         <ul>
             <li onclick="showTab('home')"><i class="fa-solid fa-house"></i> Home</li>
             <li onclick="showTab('users')"><i class="fa-solid fa-users"></i> Users</li>
