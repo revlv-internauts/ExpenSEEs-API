@@ -160,6 +160,7 @@ public class LiquidationReportController {
                 Map<String, Object> liquidationMap = new HashMap<>();
                 SubmittedBudget budget = liquidation.getSubmittedBudget();
                 liquidationMap.put("liquidationId", liquidation.getLiquidationId());
+                liquidationMap.put("budgetId", budget != null ? budget.getBudgetId() : null); // Added budgetId
                 liquidationMap.put("budgetName", budget != null ? budget.getName() : "Unknown");
                 liquidationMap.put("amount", budget != null ? budget.getTotal() : 0.0);
                 liquidationMap.put("totalSpent", liquidation.getTotalSpent());
@@ -194,6 +195,7 @@ public class LiquidationReportController {
             // Map liquidation to include budgetName and amount
             SubmittedBudget budget = liquidation.getSubmittedBudget();
             response.put("liquidationId", liquidation.getLiquidationId());
+            response.put("budgetId", budget != null ? budget.getBudgetId() : null); // Added budgetId
             response.put("budgetName", budget != null ? budget.getName() : "Unknown");
             response.put("amount", budget != null ? budget.getTotal() : 0.0);
             response.put("totalSpent", liquidation.getTotalSpent());
