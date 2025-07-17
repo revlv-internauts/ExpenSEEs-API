@@ -181,7 +181,6 @@ public class ExpenseService {
     public boolean isExpenseAddedToLiquidation(Long expenseId) {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new IllegalArgumentException("Expense not found: " + expenseId));
-        // Check if expense is referenced in any LiquidationExpenseItem by matching amount and category
         List<LiquidationExpenseItem> liquidationItems = liquidationExpenseItemRepository.findAll();
         return liquidationItems.stream().anyMatch(item ->
                 item.getAmount().equals(expense.getAmount()) &&
@@ -192,7 +191,9 @@ public class ExpenseService {
 
     private void checkExpenseOwnership(Expense expense) {
         String username = getCurrentUsername();
-        if (!expense.getUser().getUsername().equals(username)) {
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !expense.getUser().getUsername().equals(username)) {
             throw new UnauthorizedAccessException("Unauthorized access to expense");
         }
     }
