@@ -36,8 +36,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/sign-in", "/api/forgotPassword/**", "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/budgets/{budgetId}").hasRole("ADMIN") // Restrict DELETE endpoint
                         .requestMatchers("/api/users/**", "/api/expenses/**", "/api/budgets/**", "/api/liquidation/**", "/api/forgotPassword/reset-password").authenticated()
-                        .requestMatchers("/api/users/{userId}/profile-picture").authenticated() // New endpoint
+                        .requestMatchers("/api/users/{userId}/profile-picture").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

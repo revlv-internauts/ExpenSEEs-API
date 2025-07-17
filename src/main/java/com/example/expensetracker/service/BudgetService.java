@@ -2,12 +2,16 @@ package com.example.expensetracker.service;
 
 import com.example.expensetracker.Entity.Expense;
 import com.example.expensetracker.Entity.ExpenseItem;
+import com.example.expensetracker.Entity.Liquidation;
 import com.example.expensetracker.Entity.SubmittedBudget;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.BudgetRepository;
 import com.example.expensetracker.Repository.ExpenseRepository;
+import com.example.expensetracker.Repository.LiquidationRepository;
 import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.exception.UnauthorizedAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -23,6 +27,8 @@ import java.util.List;
 @Service
 public class BudgetService {
 
+    private static final Logger logger = LoggerFactory.getLogger(BudgetService.class);
+
     @Autowired
     private BudgetRepository budgetRepository;
 
@@ -31,6 +37,9 @@ public class BudgetService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private LiquidationRepository liquidationRepository;
 
     public SubmittedBudget createBudget(SubmittedBudget budget) {
         if (budget == null || budget.getName() == null || budget.getName().trim().isEmpty()) {
@@ -60,9 +69,7 @@ public class BudgetService {
                 .sum();
         budget.setTotal(total);
         budget.setStatus(SubmittedBudget.Status.PENDING);
-        budget.setExpenses(budget.getExpenses().stream()
-                .peek(item -> item.setBudget(budget))
-                .toList());
+        budget.getExpenses().forEach(item -> item.setBudget(budget));
         return budgetRepository.save(budget);
     }
 
@@ -74,7 +81,6 @@ public class BudgetService {
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
-        // Map frontend sort values to database field names
         String sortField;
         switch (sortBy.toLowerCase()) {
             case "date":
@@ -93,7 +99,7 @@ public class BudgetService {
                 sortField = "status";
                 break;
             default:
-                sortField = "createdAt"; // Default sort
+                sortField = "createdAt";
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
@@ -146,7 +152,7 @@ public class BudgetService {
         }
         SubmittedBudget budget = budgetRepository.findById(budgetId).get();
         budget.setStatus(status);
-        budget.setRemarks(remarks); // Save remarks if provided, null otherwise
+        budget.setRemarks(remarks);
         budgetRepository.save(budget);
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
@@ -183,6 +189,37 @@ public class BudgetService {
         budget.setTotal(budget.getTotal() + expense.getAmount());
         budgetRepository.save(budget);
         return new ResponseEntity<>("Expense associated with budget successfully", HttpStatus.OK);
+    }
+
+    @Transactional
+    public ResponseEntity<String> deleteBudget(Long budgetId) {
+        if (budgetId == null) {
+            logger.error("Budget ID is null");
+            return new ResponseEntity<>("Budget ID is required", HttpStatus.BAD_REQUEST);
+        }
+        User currentUser = userRepository.findByUsername(getCurrentUsername());
+        if (currentUser == null) {
+            logger.error("User not found for username: {}", getCurrentUsername());
+            return new ResponseEntity<>("User not found", HttpStatus.UNAUTHORIZED);
+        }
+        if (budgetRepository.findById(budgetId).isEmpty()) {
+            logger.warn("Budget not found for ID: {}", budgetId);
+            return new ResponseEntity<>("Budget not found", HttpStatus.NOT_FOUND);
+        }
+
+        logger.info("Deleting budget with ID: {}", budgetId);
+        // Delete associated liquidations
+        List<Liquidation> liquidations = liquidationRepository.findAll().stream()
+                .filter(l -> l.getSubmittedBudget() != null && l.getSubmittedBudget().getBudgetId().equals(budgetId))
+                .toList();
+        if (!liquidations.isEmpty()) {
+            logger.info("Deleting {} associated liquidation records for budget ID: {}", liquidations.size(), budgetId);
+            liquidationRepository.deleteAll(liquidations);
+        }
+
+        budgetRepository.deleteById(budgetId);
+        logger.info("Budget deleted successfully: {}", budgetId);
+        return new ResponseEntity<>("Budget and associated liquidations deleted successfully", HttpStatus.OK);
     }
 
     private String getCurrentUsername() {
