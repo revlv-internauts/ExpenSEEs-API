@@ -47,8 +47,10 @@ public class AdminController {
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
+    public ResponseEntity<List<User>> getAllUsers(
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+        List<User> users = userService.getAllUsers(sortBy, sortOrder);
         return ResponseEntity.ok(users);
     }
 }

@@ -3,6 +3,7 @@ package com.example.expensetracker.service;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,7 +52,24 @@ public class UserService {
         return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
     }
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<User> getAllUsers(String sortBy, String sortOrder) {
+        String sortField;
+        switch (sortBy.toLowerCase()) {
+            case "username":
+                sortField = "username";
+                break;
+            case "email":
+                sortField = "email";
+                break;
+            case "createdat":
+            case "date":
+                sortField = "createdAt";
+                break;
+            default:
+                sortField = "createdAt"; // Default sort
+        }
+
+        Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
+        return userRepository.findAll(sort);
     }
 }

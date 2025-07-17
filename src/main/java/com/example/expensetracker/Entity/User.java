@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -27,6 +29,9 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(nullable = true)
+    private LocalDateTime createdAt;
+
     @Column
     private String profilePicturePath; // New field for profile picture
 
@@ -41,4 +46,9 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<ForgotPassword> forgotPasswords;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }
