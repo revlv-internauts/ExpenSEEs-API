@@ -626,6 +626,18 @@ async function loadUserProfilePicture(userId) {
     }
 }
 
+function showConfirmDeleteUserModal(userId) {
+    selectedUserIndex = users.findIndex(u => u.userId === userId);
+    const confirmPopup = document.getElementById("confirmModal");
+    confirmPopup.style.display = "flex";
+}
+
+function showConfirmDeleteUser(index) {
+    selectedUserIndex = index;
+    const confirmPopup = document.getElementById("confirmModal");
+    confirmPopup.style.display = "flex";
+}
+
 async function updateUserTable() {
     const tbody = document.getElementById("users-table");
     tbody.innerHTML = "";
@@ -635,11 +647,16 @@ async function updateUserTable() {
         const user = filteredUsers[index];
         const profilePicSrc = await loadUserProfilePicture(user.userId);
         const row = document.createElement("tr");
-row.innerHTML = `
-    <td><img src="${sanitizeHTML(profilePicSrc)}" class="user-profile-pic" alt="${sanitizeHTML(user.username)}'s Profile Picture">${sanitizeHTML(user.username)}</td>
-    <td>${sanitizeHTML(user.email)}</td>
-    <td><button onclick="showUserDetails(${index})">View</button></td>
-`;
+        row.innerHTML = `
+            <td><img src="${sanitizeHTML(profilePicSrc)}" class="user-profile-pic" alt="${sanitizeHTML(user.username)}'s Profile Picture">${sanitizeHTML(user.username)}</td>
+            <td>${sanitizeHTML(user.email)}</td>
+            <td>
+                <button onclick="showUserDetails(${index})">View</button>
+                <button class="delete-icon-btn" onclick="showConfirmDeleteUser(${index})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
         tbody.appendChild(row);
     }
 
@@ -652,44 +669,47 @@ function showUserDetails(index) {
 
     userDetailsPopup = document.createElement("div");
     userDetailsPopup.className = "user-popup";
-userDetailsPopup.innerHTML = `
-    <div class="modal-content popup-card">
-        <span class="close-btn" onclick="closePopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
-        <h3>User Details</h3>
-        <p><strong>ID:</strong> ${sanitizeHTML(user.userId)}</p>
-        <p><strong>Username:</strong> ${sanitizeHTML(user.username)}</p>
-        <p><strong>Email:</strong> ${sanitizeHTML(user.email)}</p>
-        <h4>Reset Password</h4>
-        <form id="user-reset-password-form" class="profile-form">
-            <div class="form-group password-wrapper">
-                <label for="user-new-password">New Password</label>
-                <input type="password" id="user-new-password" required>
-                <span class="toggle-password" onclick="togglePassword('user-new-password', this)" aria-label="Toggle password visibility">
-                    <i class="fa-solid fa-eye-slash"></i>
-                </span>
-            </div>
-            <div class="form-group password-wrapper">
-                <label for="user-confirm-password">Confirm New Password</label>
-                <input type="password" id="user-confirm-password" required>
-                <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)" aria-label="Toggle password visibility">
-                    <i class="fa-solid fa-eye-slash"></i>
-                </span>
-            </div>
-            <p id="user-reset-error" class="error-text" style="display: none;"></p>
-            <button type="button" onclick="resetUserPassword(users.filter(u => u.username?.toLowerCase() !== 'admin')[${index}], this.closest('.user-popup'))" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Reset Password</button>
-        </form>
-        <div class="popup-actions">
-            <button onclick="confirmDeleteUser()" style="background: linear-gradient(135deg, #d9534f, #c9302c); color: white;">Delete</button>
-            <button onclick="closePopup()" style="background: linear-gradient(135deg, #ccc, #aaa); color: black;">Close</button>
+    userDetailsPopup.innerHTML = `
+        <div class="modal-content popup-card">
+            <span class="close-btn" onclick="closePopup()" style="float: right; font-size: 1.5rem; cursor: pointer; color: #333;">×</span>
+            <h3>User Details</h3>
+            <p><strong>ID:</strong> ${sanitizeHTML(user.userId)}</p>
+            <p><strong>Username:</strong> ${sanitizeHTML(user.username)}</p>
+            <p><strong>Email:</strong> ${sanitizeHTML(user.email)}</p>
+            <h4>Reset Password</h4>
+            <form id="user-reset-password-form" class="profile-form">
+                <div class="form-group password-wrapper">
+                    <label for="user-new-password">New Password</label>
+                    <input type="password" id="user-new-password" required>
+                    <span class="toggle-password" onclick="togglePassword('user-new-password', this)" aria-label="Toggle password visibility">
+                        <i class="fa-solid fa-eye-slash"></i>
+                    </span>
+                </div>
+                <div class="form-group password-wrapper">
+                    <label for="user-confirm-password">Confirm New Password</label>
+                    <input type="password" id="user-confirm-password" required>
+                    <span class="toggle-password" onclick="togglePassword('user-confirm-password', this)" aria-label="Toggle password visibility">
+                        <i class="fa-solid fa-eye-slash"></i>
+                    </span>
+                </div>
+                <p id="user-reset-error" class="error-text" style="display: none;"></p>
+                <button type="button" onclick="resetUserPassword(users.filter(u => u.username?.toLowerCase() !== 'admin')[${index}], this.closest('.user-popup'))" style="background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white;">Reset Password</button>
+            </form>
         </div>
-    </div>
-`;
+    `;
     document.body.appendChild(userDetailsPopup);
 }
 
 function confirmDeleteUser() {
     const confirmPopup = document.getElementById("confirmModal");
-    confirmPopup.style.display = "flex";
+    if (selectedUserIndex !== null) {
+        deleteUser(selectedUserIndex);
+    }
+    confirmPopup.style.display = "none";
+    if (userDetailsPopup) {
+        userDetailsPopup.remove();
+        userDetailsPopup = null;
+    }
 }
 
 function cancelDeleteUser() {
