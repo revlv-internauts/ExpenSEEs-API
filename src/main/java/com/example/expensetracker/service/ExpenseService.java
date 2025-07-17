@@ -1,8 +1,10 @@
 package com.example.expensetracker.service;
 
 import com.example.expensetracker.Entity.Expense;
+import com.example.expensetracker.Entity.LiquidationExpenseItem;
 import com.example.expensetracker.Entity.User;
 import com.example.expensetracker.Repository.ExpenseRepository;
+import com.example.expensetracker.Repository.LiquidationExpenseItemRepository;
 import com.example.expensetracker.Repository.UserRepository;
 import com.example.expensetracker.dto.ExpenseDto;
 import com.example.expensetracker.exception.UnauthorizedAccessException;
@@ -31,6 +33,9 @@ public class ExpenseService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private LiquidationExpenseItemRepository liquidationExpenseItemRepository;
 
     public Expense addExpense(ExpenseDto expenseDto) {
         String username = getCurrentUsername();
@@ -171,6 +176,18 @@ public class ExpenseService {
             checkExpenseOwnership(expense);
         }
         expenseRepository.deleteAllById(expenseIds);
+    }
+
+    public boolean isExpenseAddedToLiquidation(Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new IllegalArgumentException("Expense not found: " + expenseId));
+        // Check if expense is referenced in any LiquidationExpenseItem by matching amount and category
+        List<LiquidationExpenseItem> liquidationItems = liquidationExpenseItemRepository.findAll();
+        return liquidationItems.stream().anyMatch(item ->
+                item.getAmount().equals(expense.getAmount()) &&
+                        item.getCategory().equals(expense.getCategory()) &&
+                        item.getBudget().getUser().getUserId().equals(expense.getUser().getUserId())
+        );
     }
 
     private void checkExpenseOwnership(Expense expense) {

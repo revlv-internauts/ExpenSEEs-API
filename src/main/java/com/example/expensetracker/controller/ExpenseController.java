@@ -171,21 +171,50 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Expense>> getAllExpenses(
+    public ResponseEntity<List<Map<String, Object>>> getAllExpenses(
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
         String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
-        return ResponseEntity.ok(expenseService.getAllExpenses(effectiveSortBy, sortOrder));
+        List<Expense> expenses = expenseService.getAllExpenses(effectiveSortBy, sortOrder);
+        List<Map<String, Object>> responseList = expenses.stream().map(expense -> {
+            Map<String, Object> expenseMap = new HashMap<>();
+            expenseMap.put("expenseId", expense.getExpenseId());
+            expenseMap.put("category", expense.getCategory());
+            expenseMap.put("amount", expense.getAmount());
+            expenseMap.put("remarks", expense.getRemarks());
+            expenseMap.put("dateOfTransaction", expense.getDateOfTransaction());
+            expenseMap.put("createdAt", expense.getCreatedAt());
+            expenseMap.put("updatedAt", expense.getUpdatedAt());
+            expenseMap.put("imagePaths", expense.getImagePaths());
+            expenseMap.put("username", expense.getUser() != null ? expense.getUser().getUsername() : "Unknown");
+            expenseMap.put("isExpenseAdded", expenseService.isExpenseAddedToLiquidation(expense.getExpenseId()));
+            return expenseMap;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(responseList);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/all")
-    public ResponseEntity<List<Expense>> getAllExpensesForAdmin(
+    public ResponseEntity<List<Map<String, Object>>> getAllExpensesForAdmin(
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        // Map 'date' to 'createdAt' for sorting
         String effectiveSortBy = sortBy.equals("date") ? "createdAt" : sortBy;
-        return ResponseEntity.ok(expenseService.getAllExpensesForAdmin(effectiveSortBy, sortOrder));
+        List<Expense> expenses = expenseService.getAllExpensesForAdmin(effectiveSortBy, sortOrder);
+        List<Map<String, Object>> responseList = expenses.stream().map(expense -> {
+            Map<String, Object> expenseMap = new HashMap<>();
+            expenseMap.put("expenseId", expense.getExpenseId());
+            expenseMap.put("category", expense.getCategory());
+            expenseMap.put("amount", expense.getAmount());
+            expenseMap.put("remarks", expense.getRemarks());
+            expenseMap.put("dateOfTransaction", expense.getDateOfTransaction());
+            expenseMap.put("createdAt", expense.getCreatedAt());
+            expenseMap.put("updatedAt", expense.getUpdatedAt());
+            expenseMap.put("imagePaths", expense.getImagePaths());
+            expenseMap.put("username", expense.getUser() != null ? expense.getUser().getUsername() : "Unknown");
+            expenseMap.put("isExpenseAdded", expenseService.isExpenseAddedToLiquidation(expense.getExpenseId()));
+            return expenseMap;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(responseList);
     }
 
     @DeleteMapping("/{expenseId}")
