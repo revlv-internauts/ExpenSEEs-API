@@ -37,7 +37,7 @@ body, html {
     padding: 3rem 2.5rem;
     border-radius: 25px;
     text-align: center;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35); /* Increased shadow */
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
     width: 370px;
     animation: fadeInZoom 0.5s ease;
 }
@@ -230,14 +230,26 @@ header h2 {
     flex: 1;
     min-width: 250px;
     max-width: 300px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2); /* Increased shadow */
+    width: 100%; /* Ensure it respects the max-width */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    overflow: hidden; /* Clip any overflow */
+    display: flex;
+    flex-direction: column;
+}
+
+.balance-card .amount {
+    font-size: clamp(0.8rem, 2.5vw, 1.2rem); /* Auto-adjust font size */
+    white-space: nowrap; /* Keep on one line */
+    overflow: hidden; /* Clip if scaling fails */
+    max-width: 100%; /* Respect card width */
+    color: #EEECE0; /* Light Beige to match card text */
 }
 
 .chart-card {
     background: #E5D9D8; /* Soft Pink */
     padding: 1.5rem;
     border-radius: 15px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* Increased shadow */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     flex: 2;
     min-width: 300px;
     width: 100%;
@@ -248,7 +260,7 @@ header h2 {
     background: #E5D9D8; /* Soft Pink */
     padding: 1.5rem;
     border-radius: 15px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* Increased shadow */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     flex: 1;
     min-width: 250px;
     max-width: 300px;
@@ -323,7 +335,7 @@ table {
     background: #E5D9D8; /* Soft Pink */
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Increased shadow */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     table-layout: fixed;
 }
 
@@ -470,7 +482,7 @@ tbody tr:hover {
     background: #E5D9D8; /* Soft Pink */
     padding: 2rem;
     border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3); /* Increased shadow */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     width: 320px;
     text-align: center;
 }
@@ -540,7 +552,7 @@ tbody tr:hover {
     background: #E5D9D8; /* Soft Pink */
     padding: 1.5rem;
     border-radius: 15px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* Increased shadow */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 .profile-card h3 {
@@ -577,7 +589,7 @@ tbody tr:hover {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #5F384B; /* Dark Purplish-Red */
-    border-radius:  Ascending(135deg, #5F384B, #5C3C4C); /* Dark Purplish-Red to Secondary Dark */
+    border-radius: 8px;
     font-size: 1rem;
     background: #fff;
     box-sizing: border-box;
@@ -631,7 +643,7 @@ tbody tr:hover {
     padding: 2rem;
     border-radius: 15px;
     width: 350px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3); /* Increased shadow */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -808,11 +820,17 @@ tbody tr:hover {
 @media (max-width: 768px) {
     .balance-section {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
+        padding: 0 0.5rem;
     }
     .balance-card, .chart-card, .notifications-card {
+        flex: none;
         width: 100%;
-        max-width: 400px;
+        max-width: none;
+    }
+    .chart-card canvas {
+        height: 50vw !important;
+        max-height: 300px;
     }
     .modal-content, .popup-card {
         width: 90%;
@@ -870,7 +888,7 @@ tbody tr:hover {
     padding: 1rem;
     background: #E5D9D8; /* Soft Pink */
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* Increased shadow */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .modal-confirm {
@@ -891,7 +909,7 @@ tbody tr:hover {
     padding: 2rem;
     border-radius: 10px;
     text-align: center;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3); /* Increased shadow */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .modal-confirm-content button {
