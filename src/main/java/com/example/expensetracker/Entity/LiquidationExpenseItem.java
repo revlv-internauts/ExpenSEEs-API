@@ -2,6 +2,8 @@ package com.example.expensetracker.Entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,10 +40,8 @@ public class LiquidationExpenseItem {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @ElementCollection
-    @CollectionTable(name = "liquidation_expense_images", joinColumns = @JoinColumn(name = "liquidation_expense_id"))
-    @Column(name = "image_path")
-    private List<String> imagePaths = new ArrayList<>();
+    @Column(columnDefinition = "TEXT")
+    private String imagePaths;
 
     @ManyToOne
     @JoinColumn(name = "liquidation_id")
@@ -51,6 +51,27 @@ public class LiquidationExpenseItem {
     @JsonProperty("username")
     public String getUsername() {
         return budget != null && budget.getUser() != null ? budget.getUser().getUsername() : "Unknown";
+    }
+
+    public List<String> getImagePaths() {
+        if (imagePaths == null || imagePaths.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(imagePaths, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public void setImagePaths(List<String> imagePaths) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            this.imagePaths = mapper.writeValueAsString(imagePaths);
+        } catch (Exception e) {
+            this.imagePaths = "[]";
+        }
     }
 
     @PrePersist

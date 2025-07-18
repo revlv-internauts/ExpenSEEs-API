@@ -18,6 +18,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Sort;
 import jakarta.transaction.Transactional;
+import java.io.IOException; // Added import
+import java.nio.file.Files; // Added import
+import java.nio.file.Paths; // Added import
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -111,7 +114,7 @@ public class LiquidationService {
                 sortField = "status";
                 break;
             default:
-                sortField = "createdAt"; // Default sort
+                sortField = "createdAt";
         }
 
         Sort sort = Sort.by(sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC, sortField);
@@ -144,7 +147,7 @@ public class LiquidationService {
         }
         Liquidation liquidation = liquidationRepository.findById(liquidationId).get();
         liquidation.setStatus(status);
-        liquidation.setRemarks(remarks); // Save remarks if provided, null otherwise
+        liquidation.setRemarks(remarks);
         liquidationRepository.save(liquidation);
         return new ResponseEntity<>("Status updated successfully", HttpStatus.OK);
     }
@@ -194,6 +197,15 @@ public class LiquidationService {
         if (!isAdmin && !liquidation.getUser().getUserId().equals(currentUser.getUserId())) {
             return new ResponseEntity<>("Unauthorized: You can only delete your own liquidations", HttpStatus.FORBIDDEN);
         }
+        liquidation.getExpenses().forEach(expense -> {
+            expense.getImagePaths().forEach(path -> {
+                try {
+                    Files.deleteIfExists(Paths.get(path));
+                } catch (IOException e) {
+                    // Log error but continue deletion
+                }
+            });
+        });
         liquidationRepository.delete(liquidation);
         return new ResponseEntity<>("Liquidation deleted successfully", HttpStatus.OK);
     }
