@@ -6,10 +6,6 @@ ExpenSEEs-API is the backend for the ExpenSEEs expense tracking system, designed
 
 Features
 
-
-
-
-
 User Management: Create, retrieve, delete, and reset passwords for non-admin users.
 
 

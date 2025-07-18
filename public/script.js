@@ -437,7 +437,17 @@ function updateCharts() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } }
+                y: {
+                    type: 'logarithmic', // Use logarithmic scale
+                    beginAtZero: false, // Logarithmic scales can't start at zero
+                    min: 1, // Minimum value for logarithmic scale
+                    title: { display: true, text: "Amount (₱)" },
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
             },
             plugins: { legend: { display: false } }
         }
@@ -472,7 +482,17 @@ function updateCharts() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } }
+                y: {
+                    type: 'logarithmic', // Use logarithmic scale
+                    beginAtZero: false,
+                    min: 1,
+                    title: { display: true, text: "Amount (₱)" },
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
             },
             plugins: { legend: { display: false } }
         }
@@ -516,7 +536,17 @@ function updateCharts() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: "Amount (₱)" } },
+                y: {
+                    type: 'logarithmic', // Use logarithmic scale
+                    beginAtZero: false,
+                    min: 1,
+                    title: { display: true, text: "Amount (₱)" },
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                },
                 x: { title: { display: true, text: "Month" } }
             },
             plugins: { legend: { display: false } }
