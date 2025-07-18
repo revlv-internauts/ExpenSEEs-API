@@ -51,6 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function showToast(message) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+
+    // Determine toast color based on message content
+    const isError = message.toLowerCase().includes("error") || message.toLowerCase().includes("failed");
+    toast.style.backgroundColor = isError ? "red" : "green";
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add("fadeInOut");
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }, 100);
+}
+
 // =================== AUTH ===================
 async function login() {
     const username = document.getElementById("username").value;
@@ -781,16 +799,16 @@ function closePopup(popupElement = null) {
             expensePopup.style.display = "none";
         } else if (currentPopupType === 'liquidation' && liquidationPopup) {
             liquidationPopup.style.display = "none";
-            // Close the liquidation details popup as well
             document.getElementById("liquidationPopup").style.display = "none";
             selectedLiquidationIndex = null;
         }
 
-        if (img) {
+        if (img && img.src) {
             img.removeEventListener('mousedown', startDragging);
             img.removeEventListener('mousemove', drag);
             img.removeEventListener('mouseup', stopDragging);
             img.removeEventListener('mouseleave', stopDragging);
+            URL.revokeObjectURL(img.src);
             img.src = '';
         }
         document.removeEventListener('keydown', handleKeyZoom);
@@ -800,19 +818,25 @@ function closePopup(popupElement = null) {
         panX = 0;
         panY = 0;
         currentPopupType = null;
+        currentExpenseId = null;
     }
     userDetailsPopup = null;
     selectedUserIndex = null;
 }
 
+
 function closeLiquidationImagePopup() {
     const popup = document.getElementById("liquidationExpenseImagePopup");
     const img = document.getElementById("popup-liquidation-expense-img");
     popup.style.display = "none";
-    img.removeEventListener('mousedown', startDragging);
-    img.removeEventListener('mousemove', drag);
-    img.removeEventListener('mouseup', stopDragging);
-    img.removeEventListener('mouseleave', stopDragging);
+    if (img && img.src) {
+        img.removeEventListener('mousedown', startDragging);
+        img.removeEventListener('mousemove', drag);
+        img.removeEventListener('mouseup', stopDragging);
+        img.removeEventListener('mouseleave', stopDragging);
+        URL.revokeObjectURL(img.src);
+        img.src = '';
+    }
     document.removeEventListener('keydown', handleKeyZoom);
     currentExpenseImages = [];
     currentImageIndex = 0;
@@ -820,8 +844,7 @@ function closeLiquidationImagePopup() {
     panX = 0;
     panY = 0;
     currentPopupType = null;
-    img.src = '';
-    // Close the liquidation details popup
+    currentExpenseId = null;
     document.getElementById("liquidationPopup").style.display = "none";
     selectedLiquidationIndex = null;
 }
@@ -1091,7 +1114,7 @@ function filterExpenses() {
 }
 
 // =================== EXPENSE IMAGE HANDLING ===================
-function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
+async function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     const isLiquidation = !!liquidationId;
     const popup = document.getElementById(isLiquidation ? "liquidationExpenseImagePopup" : "expenseImagePopup");
     const img = document.getElementById(isLiquidation ? "popup-liquidation-expense-img" : "popup-expense-img");
@@ -1113,7 +1136,7 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
     img.removeEventListener('mouseleave', stopDragging);
     document.removeEventListener('keydown', handleKeyZoom);
 
-    // Update image controls (hide Previous/Next buttons for both tabs since only one image is returned)
+    // Update image controls
     const imageControls = popup.querySelector('div[style*="margin-top: 10px"]');
     imageControls.innerHTML = `
         <button onclick="zoomImage('in')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #5cb85c, #4cae4c); color: white; cursor: pointer;">
@@ -1122,43 +1145,85 @@ function showExpenseImage(expenseId, liquidationId = null, imageIndex = 0) {
         <button onclick="zoomImage('out')" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #d9534f, #c9302c); color: white; cursor: pointer;">
             <i class="fas fa-search-minus"></i> Zoom Out
         </button>
+        <button onclick="showPreviousImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+            <i class="fas fa-arrow-left"></i> Previous
+        </button>
+        <button onclick="showNextImage()" style="margin-right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
+            <i class="fas fa-arrow-right"></i> Next
+        </button>
         <button onclick="downloadImage()" style="padding: 5px 10px; border: none; border-radius: 5px; background: linear-gradient(135deg, #333, #555); color: white; cursor: pointer;">
             <i class="fas fa-download"></i> Download
         </button>
     `;
 
     currentExpenseImages = [];
-    currentImageIndex = 0;
+    currentImageIndex = imageIndex;
     currentExpenseId = expenseId;
 
-    const endpoint = isLiquidation
-        ? `${SERVER_URL}/api/liquidation/${expenseId}/images`
-        : `${SERVER_URL}/api/expenses/${expenseId}/images?index=0`;
-
-    fetch(endpoint, {
-        headers: { "Authorization": `Bearer ${token}` }
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error || `Image not found: ${response.status} ${response.statusText}`);
+    try {
+        if (isLiquidation) {
+            // Fetch liquidation details to get image paths
+            const endpoint = `${SERVER_URL}/api/liquidation/${liquidationId}`;
+            const response = await fetch(endpoint, {
+                headers: { "Authorization": `Bearer ${token}` }
             });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || `Failed to fetch liquidation: ${response.status}`);
+            }
+            // Find the expense with the given liquidationExpenseId
+            const expense = data.expenses.find(exp => exp.liquidationExpenseId === expenseId);
+            if (!expense) {
+                throw new Error(`Liquidation expense with ID ${expenseId} not found`);
+            }
+            currentExpenseImages = expense.imagePaths || [];
+            if (currentExpenseImages.length === 0) {
+                throw new Error("No images found for liquidation expense");
+            }
+            // Fetch the specific image
+            const imageEndpoint = `${SERVER_URL}/api/liquidation/${liquidationId}/images/${expenseId}/${imageIndex}`;
+            const imageResponse = await fetch(imageEndpoint, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!imageResponse.ok) {
+                const errorData = await imageResponse.json();
+                throw new Error(errorData.error || `Failed to fetch image: ${imageResponse.status}`);
+            }
+            const blob = await imageResponse.blob();
+            img.src = URL.createObjectURL(blob);
+        } else {
+            // Fetch expense image (for Expenses tab)
+            const endpoint = `${SERVER_URL}/api/expenses/${expenseId}/images?index=${imageIndex}`;
+            const imageResponse = await fetch(endpoint, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!imageResponse.ok) {
+                const errorData = await imageResponse.json();
+                throw new Error(errorData.error || `Failed to fetch image: ${imageResponse.status}`);
+            }
+            const blob = await imageResponse.blob();
+            img.src = URL.createObjectURL(blob);
+            currentExpenseImages = [img.src]; // Assume single image for expenses
         }
-        return response.blob();
-    })
-    .then(blob => {
-        img.src = URL.createObjectURL(blob);
+
         popup.style.display = "flex";
         document.addEventListener('keydown', handleKeyZoom);
         img.addEventListener('mousedown', startDragging);
         img.addEventListener('mousemove', drag);
         img.addEventListener('mouseup', stopDragging);
         img.addEventListener('mouseleave', stopDragging);
-    })
-    .catch(error => {
-        showToast("Failed to load image: " + error.message);
+
+        // Update button states
+        const prevButton = imageControls.querySelector('button[onclick="showPreviousImage()"]');
+        const nextButton = imageControls.querySelector('button[onclick="showNextImage()"]');
+        prevButton.disabled = currentImageIndex <= 0;
+        nextButton.disabled = currentImageIndex >= currentExpenseImages.length - 1;
+    } catch (error) {
+        console.error("Error loading image:", error);
+        showToast(`Failed to load image: ${error.message}`);
+        img.src = "images/placeholder.png"; // Fallback image
         popup.style.display = "flex";
-    });
+    }
 }
 
 function zoomImage(direction) {
@@ -1205,11 +1270,23 @@ function stopDragging(event) {
 }
 
 function showPreviousImage() {
-    // Disabled since only one image is returned
+    if (currentExpenseImages.length === 0 || currentImageIndex <= 0) return;
+    currentImageIndex--;
+    showExpenseImage(
+        currentExpenseId,
+        currentPopupType === 'liquidation' ? liquidations[selectedLiquidationIndex]?.liquidationId : null,
+        currentImageIndex
+    );
 }
 
 function showNextImage() {
-    // Disabled since only one image is returned
+    if (currentExpenseImages.length === 0 || currentImageIndex >= currentExpenseImages.length - 1) return;
+    currentImageIndex++;
+    showExpenseImage(
+        currentExpenseId,
+        currentPopupType === 'liquidation' ? liquidations[selectedLiquidationIndex]?.liquidationId : null,
+        currentImageIndex
+    );
 }
 
 function downloadImage() {
@@ -1218,7 +1295,7 @@ function downloadImage() {
 
     const link = document.createElement('a');
     link.href = img.src;
-    link.download = `expense-image-${currentPopupType}-${currentExpenseId}.jpg`;
+    link.download = `expense-image-${currentPopupType}-${currentExpenseId}-${currentImageIndex}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
