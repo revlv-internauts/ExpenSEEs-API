@@ -1,6 +1,6 @@
-#ExpenSEEs-API
+# ExpenSEEs-API
 
-###Overview
+### Overview
 
 ExpenSEEs-API is the backend for the ExpenSEEs expense tracking system, designed to support the Admin Dashboard and mobile application for efficient financial management. This API, developed over six weeks in 2025 by Al Francis B. Paz (Backend Developer) and Andrew Emmanuel A. Abarientos (Frontend Developer) during their internship at REVLV, powers user management, budget operations, expense tracking, and liquidation reports. As a milestone project for two 4th-year Computer Engineering students at Ateneo de Naga University, it provides a robust RESTful interface for seamless integration with the frontend.
 
@@ -40,7 +40,7 @@ Real-time Data: Provide REST API endpoints for dynamic data operations.
 
 Security: Implement Spring Security with JWT-based authentication and role-based access control.
 
-###Tech Stack for Backend:
+### Tech Stack for Backend:
 
 
 
@@ -140,7 +140,7 @@ Git: For cloning the repository
 
 Server Access: For deployment (e.g., AWS, DigitalOcean, or local server with public IP)
 
-###Installation
+### Installation
 
 Clone the Repository
 
@@ -227,7 +227,7 @@ Test endpoints (see API Endpoints section) by sending requests with appropriate 
 
 Obtain a JWT token via POST /api/auth/sign-in and include it in subsequent requests.
 
-###Deploy the Backend
+### Deploy the Backend
 
 
 
@@ -289,7 +289,7 @@ Profile: Upload or retrieve profile pictures for users.
 
 Integration: Connect the API to the ExpenSEEs Admin Dashboard or mobile app by updating the frontend’s SERVER_URL.
 
-###Project Structure
+### Project Structure
 
 
 
@@ -333,7 +333,7 @@ application.properties: Configuration for database, server port, and CORS.
 
 pom.xml: Maven configuration for dependencies.
 
-###API Endpoints
+### API Endpoints
 
 Authentication
 
@@ -441,7 +441,7 @@ Testing with Postman
 
 
 
-###Setup:
+### Setup:
 
 
 
@@ -499,7 +499,7 @@ Deployment Notes
 
 
 
-###Backend Deployment:
+### Backend Deployment:
 
 
 
@@ -521,7 +521,7 @@ Configure CORS to allow requests from the frontend domain.
 
 
 
-###Frontend Integration:
+### Frontend Integration:
 
 
 
